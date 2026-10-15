@@ -25,7 +25,20 @@ beforeEach(async () => {
   }
 
   // Query explicit application tables strictly within testSchema (NEVER drizzle migrations table)
-  const appTables = ['examples', 'categories', 'user_sessions', 'users'];
+  const appTables = [
+    'workout_set_logs',
+    'workout_sessions',
+    'routine_exercises',
+    'workout_routines',
+    'workout_programs',
+    'user_constraints',
+    'gym_profiles',
+    'exercises',
+    'examples',
+    'categories',
+    'user_sessions',
+    'users',
+  ];
   const { rows } = await pool.query<{ schemaname: string; tablename: string }>(
     `SELECT schemaname, tablename FROM pg_tables WHERE schemaname = $1 AND tablename = ANY($2::text[])`,
     [testSchema, appTables],

@@ -36,6 +36,13 @@
       "when": 1792004215832,
       "tag": "0004_strong_vampiro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792088958866,
+      "tag": "0005_perpetual_silver_sable",
+      "breakpoints": true
     }
   ]
 }
