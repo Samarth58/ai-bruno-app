@@ -7,6 +7,8 @@ const isUnitOnly = process.argv.some(
     arg.includes('dbGuard') ||
     arg.includes('config') ||
     arg.includes('brunoDatabaseFoundation') ||
+    arg.includes('exerciseFilter') ||
+    arg.includes('brunoPhase2Apis') ||
     arg.includes('envelope'),
 );
 
