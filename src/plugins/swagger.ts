@@ -44,8 +44,19 @@ async function swaggerPlugin(app: FastifyInstance): Promise<void> {
     uiConfig: {
       docExpansion: 'list',
       deepLinking: false,
+      urls: [
+        {
+          url: '/docs/json',
+          name: 'Bruno — AI Gym Buddy API',
+        },
+      ],
     },
     staticCSP: false,
+  });
+
+  // Support /docs/json/ with trailing slash gracefully via redirect
+  app.get('/docs/json/', { schema: { hide: true } }, async (_req, reply) => {
+    return reply.redirect('/docs/json', 301);
   });
 }
 

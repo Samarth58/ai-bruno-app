@@ -29,7 +29,7 @@ describe('OpenAPI / Swagger Documentation', () => {
     expect(res.headers['content-type']).toContain('text/html');
   });
 
-  it('exposes OpenAPI JSON specification via Swagger endpoint', async () => {
+  it('exposes OpenAPI JSON specification with valid top-level openapi version field and metadata', async () => {
     const app = buildApp();
     await app.ready();
 
@@ -39,9 +39,41 @@ describe('OpenAPI / Swagger Documentation', () => {
     });
 
     expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('application/json');
     const spec = res.json();
-    expect(spec.openapi).toMatch(/^3\./);
+    expect(spec.openapi).toBe('3.0.3');
+    expect(spec.info.title).toBe('Bruno — AI Gym Buddy API');
+    expect(spec.info.version).toBe('1.0.0');
     expect(spec.paths).toBeDefined();
+    expect(spec.components?.securitySchemes?.bearerAuth).toBeDefined();
+  });
+
+  it('configures explicit definition URL in Swagger UI initializer targeting /docs/json', async () => {
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/docs/static/swagger-initializer.js',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('application/javascript');
+    expect(res.payload).toContain('/docs/json');
+    expect(res.payload).toContain('Bruno — AI Gym Buddy API');
+  });
+
+  it('gracefully redirects /docs/json/ with trailing slash to /docs/json', async () => {
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/docs/json/',
+    });
+
+    expect(res.statusCode).toBe(301);
+    expect(res.headers.location).toBe('/docs/json');
   });
 
   it('configures relative server URL without hardcoding localhost or domains', async () => {
