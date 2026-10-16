@@ -8,9 +8,9 @@ async function swaggerPlugin(app: FastifyInstance): Promise<void> {
     openapi: {
       openapi: '3.0.3',
       info: {
-        title: 'App Factory Backend Starter Kit',
+        title: 'Bruno — AI Gym Buddy API',
         description:
-          'Production-grade Node.js / Fastify backend substrate for the App Factory manufacturing pipeline, featuring JWT authentication, refresh rotation, RBAC, and canonical domain CRUD.',
+          'Bruno AI Gym Buddy backend API — intelligent fitness and workout companion featuring JWT authentication, gym profile customization, physical constraint adaptation, and exercise catalogue management.',
         version: '1.0.0',
       },
       servers: [
@@ -30,6 +30,13 @@ async function swaggerPlugin(app: FastifyInstance): Promise<void> {
         },
       },
     },
+    transform: ({ schema, url }) => {
+      // Exclude unversioned root-level route aliases so /api/v1 is the canonical frontend API interface
+      if (!url.startsWith('/api/v1') && !url.startsWith('/health')) {
+        return { schema: { ...schema, hide: true }, url };
+      }
+      return { schema, url };
+    },
   });
 
   await app.register(fastifySwaggerUi, {
@@ -38,8 +45,7 @@ async function swaggerPlugin(app: FastifyInstance): Promise<void> {
       docExpansion: 'list',
       deepLinking: false,
     },
-    staticCSP: true,
-    transformStaticCSP: (header) => header,
+    staticCSP: false,
   });
 }
 

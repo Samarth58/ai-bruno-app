@@ -58,12 +58,12 @@ describe('API Versioning (/api/v1)', () => {
       expect(body.error.code).toBe('UNAUTHORIZED');
     });
 
-    it('enforces authGuard on /api/v1/examples', async () => {
+    it('enforces authGuard on /api/v1/gym-profiles', async () => {
       const app = buildApp();
 
       const res = await app.inject({
         method: 'GET',
-        url: '/api/v1/examples',
+        url: '/api/v1/gym-profiles',
       });
 
       expect(res.statusCode).toBe(401);
@@ -97,7 +97,7 @@ describe('API Versioning (/api/v1)', () => {
       expect(res.json().error.code).toBe('VALIDATION_ERROR');
     });
 
-    it('preserves unversioned /examples route alongside /api/v1/examples', async () => {
+    it('does not expose removed demo /examples endpoint', async () => {
       const app = buildApp();
 
       const res = await app.inject({
@@ -105,8 +105,8 @@ describe('API Versioning (/api/v1)', () => {
         url: '/examples',
       });
 
-      expect(res.statusCode).toBe(401);
-      expect(res.json().error.code).toBe('UNAUTHORIZED');
+      expect(res.statusCode).toBe(404);
+      expect(res.json().error.code).toBe('RESOURCE_NOT_FOUND');
     });
   });
 });

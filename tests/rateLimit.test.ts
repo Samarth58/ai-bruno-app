@@ -66,7 +66,7 @@ describe('Rate Limiting Integration', () => {
     // Request unauthenticated protected endpoint
     const res = await app.inject({
       method: 'GET',
-      url: '/examples',
+      url: '/api/v1/gym-profiles',
     });
 
     expect(res.statusCode).toBe(401);

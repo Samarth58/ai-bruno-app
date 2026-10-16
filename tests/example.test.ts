@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { pool } from '../src/db/connection.js';
+import { exampleRoutes } from '../src/modules/example/index.js';
 import { uniqueTestIp } from './helpers/testIp.js';
 
 const app = buildApp();
+app.register(exampleRoutes);
 const password = 'password123';
 
 const uniqueEmail = () =>
