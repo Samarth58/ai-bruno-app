@@ -10,7 +10,8 @@ const isUnitOnly = process.argv.some(
     arg.includes('exerciseFilter') ||
     arg.includes('brunoPhase2Apis') ||
     arg.includes('envelope') ||
-    arg.includes('swagger'),
+    arg.includes('swagger') ||
+    arg.includes('coach'),
 );
 
 export default defineConfig({

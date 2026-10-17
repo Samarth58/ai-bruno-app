@@ -33,6 +33,15 @@ export const envSchema = z.object({
       return val;
     }, z.boolean())
     .default(true),
+
+  // AI Configuration (Optional - provider independent)
+  AI_PROVIDER: z.enum(['gemini', 'openai', 'anthropic', 'custom', 'mock']).optional(),
+  AI_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().optional(),
+  AI_BASE_URL: z.string().url().optional(),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  AI_MAX_TOKENS: z.coerce.number().int().positive().default(600),
 });
 
 export type Env = z.infer<typeof envSchema>;
