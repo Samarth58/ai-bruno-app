@@ -1,0 +1,1 @@
+ALTER TABLE "workout_set_logs" ADD COLUMN "is_warmup" boolean DEFAULT false NOT NULL;

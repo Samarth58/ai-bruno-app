@@ -342,7 +342,9 @@ export const workoutSetLogs = pgTable(
     actualReps: integer('actual_reps').notNull(),
     rpe: doublePrecision('rpe'),
     targetHit: boolean('target_hit').notNull().default(false),
+    isWarmup: boolean('is_warmup').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
+
       .notNull()
       .default(sql`now()`),
   },

@@ -11,8 +11,13 @@ const isUnitOnly = process.argv.some(
     arg.includes('brunoPhase2Apis') ||
     arg.includes('envelope') ||
     arg.includes('swagger') ||
-    arg.includes('coach'),
+    arg.includes('coach') ||
+    arg.includes('programs') ||
+    arg.includes('workoutSessions'),
 );
+
+
+
 
 export default defineConfig({
   test: {

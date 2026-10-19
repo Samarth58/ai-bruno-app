@@ -43,6 +43,13 @@
       "when": 1792088958866,
       "tag": "0005_perpetual_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792422983243,
+      "tag": "0006_pale_impossible_man",
+      "breakpoints": true
     }
   ]
 }
