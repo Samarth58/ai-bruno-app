@@ -23,6 +23,7 @@ export interface GeminiProviderOptions {
   modelName?: string;
   timeoutMs?: number;
   retryOptions?: GeminiRetryOptions;
+  fallbackModels?: string[];
 }
 
 export interface GeminiErrorClassification {
@@ -168,6 +169,7 @@ export function classifyGeminiError(
 export class GeminiAiProvider implements IAiProvider {
   public readonly name = 'gemini';
   public readonly modelName: string;
+  public readonly fallbackModels: string[];
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
@@ -184,6 +186,11 @@ export class GeminiAiProvider implements IAiProvider {
     this.maxRetries = options.retryOptions?.maxRetries ?? 2;
     this.initialDelayMs = options.retryOptions?.initialDelayMs ?? 800;
     this.maxDelayMs = options.retryOptions?.maxDelayMs ?? 3000;
+    this.fallbackModels = options.fallbackModels ?? (
+      this.modelName === 'gemini-3.8-flash'
+        ? ['gemini-3.5-flash-lite', 'gemini-3.5-flash']
+        : []
+    );
   }
 
   /**
@@ -193,6 +200,7 @@ export class GeminiAiProvider implements IAiProvider {
   private logSanitized(
     level: 'warn' | 'error',
     data: {
+      model: string;
       upstreamStatus: number;
       errorCategory: AiErrorCategory;
       attempt: number;
@@ -204,7 +212,7 @@ export class GeminiAiProvider implements IAiProvider {
     if (process.env.NODE_ENV === 'test') return;
     const logData = {
       provider: this.name,
-      model: this.modelName,
+      model: data.model,
       upstreamStatus: data.upstreamStatus,
       errorCategory: data.errorCategory,
       attempt: `${data.attempt}/${data.maxAttempts}`,
@@ -218,9 +226,15 @@ export class GeminiAiProvider implements IAiProvider {
     }
   }
 
-  async generateChatResponse(prompt: AiChatPrompt): Promise<AiChatResponse> {
+  /**
+   * Executes prompt against a specific model with bounded retries and exponential backoff.
+   */
+  private async executeWithModel(
+    targetModel: string,
+    prompt: AiChatPrompt,
+  ): Promise<AiChatResponse> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      this.modelName,
+      targetModel,
     )}:generateContent`;
 
     const bodyPayload = {
@@ -267,6 +281,7 @@ export class GeminiAiProvider implements IAiProvider {
         );
 
         this.logSanitized('warn', {
+          model: targetModel,
           upstreamStatus: isTimeout ? 504 : 0,
           errorCategory: isTimeout ? 'NETWORK_TIMEOUT' : 'UNKNOWN_UPSTREAM_ERROR',
           attempt,
@@ -283,7 +298,7 @@ export class GeminiAiProvider implements IAiProvider {
         if (isTimeout) {
           throw new AiTimeoutError(`Gemini request timed out after ${this.timeoutMs}ms`, {
             provider: this.name,
-            model: this.modelName,
+            model: targetModel,
             upstreamStatus: 504,
           });
         }
@@ -296,7 +311,7 @@ export class GeminiAiProvider implements IAiProvider {
           {
             category: 'UNKNOWN_UPSTREAM_ERROR',
             provider: this.name,
-            model: this.modelName,
+            model: targetModel,
           },
         );
       }
@@ -315,7 +330,7 @@ export class GeminiAiProvider implements IAiProvider {
             {
               category: 'UNKNOWN_UPSTREAM_ERROR',
               provider: this.name,
-              model: this.modelName,
+              model: targetModel,
               upstreamStatus: response.status,
             },
           );
@@ -331,7 +346,7 @@ export class GeminiAiProvider implements IAiProvider {
             {
               category: 'UNKNOWN_UPSTREAM_ERROR',
               provider: this.name,
-              model: this.modelName,
+              model: targetModel,
               upstreamStatus: response.status,
             },
           );
@@ -340,7 +355,7 @@ export class GeminiAiProvider implements IAiProvider {
         return {
           reply: candidateText.trim(),
           providerName: this.name,
-          modelName: this.modelName,
+          modelName: targetModel,
           rawUsage: data?.usageMetadata
             ? {
                 promptTokens: data.usageMetadata.promptTokenCount,
@@ -375,6 +390,7 @@ export class GeminiAiProvider implements IAiProvider {
       }
 
       this.logSanitized(classification.isRetryable ? 'warn' : 'error', {
+        model: targetModel,
         upstreamStatus: classification.upstreamStatus,
         errorCategory: classification.category,
         attempt,
@@ -383,7 +399,7 @@ export class GeminiAiProvider implements IAiProvider {
         delayMs: classification.isRetryable && attempt < maxAttempts ? delay : undefined,
       });
 
-      // Transient retry branch
+      // Transient retry branch within the same model
       if (classification.isRetryable && attempt < maxAttempts) {
         await sleep(delay);
         continue;
@@ -393,7 +409,7 @@ export class GeminiAiProvider implements IAiProvider {
       const errOptions = {
         upstreamStatus: classification.upstreamStatus,
         provider: this.name,
-        model: this.modelName,
+        model: targetModel,
       };
 
       switch (classification.category) {
@@ -420,7 +436,6 @@ export class GeminiAiProvider implements IAiProvider {
       }
     }
 
-    // Fallback if loop exits without returning or throwing
     throw new AiError(
       'AI Coach request failed after retry attempts.',
       'SERVICE_UNAVAILABLE',
@@ -429,8 +444,48 @@ export class GeminiAiProvider implements IAiProvider {
       {
         category: 'MODEL_OVERLOADED',
         provider: this.name,
-        model: this.modelName,
+        model: targetModel,
       },
     );
+  }
+
+  /**
+   * Main entrypoint with primary model execution and automatic model failover
+   * if the primary model is experiencing severe data-center capacity spikes (MODEL_OVERLOADED).
+   */
+  async generateChatResponse(prompt: AiChatPrompt): Promise<AiChatResponse> {
+    const modelsToTry = [
+      this.modelName,
+      ...this.fallbackModels.filter((m) => m !== this.modelName),
+    ];
+    let lastError: unknown = null;
+
+    for (let mIdx = 0; mIdx < modelsToTry.length; mIdx++) {
+      const currentModel = modelsToTry[mIdx];
+      try {
+        return await this.executeWithModel(currentModel, prompt);
+      } catch (err: unknown) {
+        lastError = err;
+
+        // Only failover to fallback models if the error is MODEL_OVERLOADED (503)
+        const canFailover =
+          err instanceof AiOverloadedError ||
+          (err instanceof AiError && err.category === 'MODEL_OVERLOADED');
+
+        if (canFailover && mIdx < modelsToTry.length - 1) {
+          const nextModel = modelsToTry[mIdx + 1];
+          if (process.env.NODE_ENV !== 'test') {
+            console.warn(
+              `[GeminiAiProvider] Primary model "${currentModel}" is experiencing high demand. Seamlessly attempting fallback model "${nextModel}"...`,
+            );
+          }
+          continue;
+        }
+
+        throw err;
+      }
+    }
+
+    throw lastError;
   }
 }

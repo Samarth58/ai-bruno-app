@@ -480,6 +480,7 @@ describe('Bruno AI Gym Buddy — AI Integration & Coach Suite', () => {
         const gemini = new GeminiAiProvider({
           apiKey: 'mock-key',
           retryOptions: { maxRetries: 2, initialDelayMs: 5, maxDelayMs: 10 },
+          fallbackModels: [],
         });
 
         await expect(
@@ -487,6 +488,70 @@ describe('Bruno AI Gym Buddy — AI Integration & Coach Suite', () => {
         ).rejects.toThrow(AiOverloadedError);
 
         expect(callCount).toBe(3); // Initial attempt + 2 retries
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('GeminiAiProvider seamlessly falls back to fallbackModels when primary is overloaded', async () => {
+      const originalFetch = globalThis.fetch;
+      const calledModels: string[] = [];
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('gemini-3.8-flash')) {
+          calledModels.push('gemini-3.8-flash');
+          return Promise.resolve({
+            ok: false,
+            status: 503,
+            text: async () =>
+              JSON.stringify({
+                error: {
+                  code: 503,
+                  message: 'This model is currently experiencing high demand.',
+                  status: 'UNAVAILABLE',
+                },
+              }),
+            headers: new Headers(),
+          });
+        }
+
+        if (url.includes('gemini-3.5-flash-lite')) {
+          calledModels.push('gemini-3.5-flash-lite');
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              candidates: [
+                {
+                  content: {
+                    parts: [{ text: 'Here is a beginner dumbbell workout: 3 sets of floor press!' }],
+                  },
+                },
+              ],
+            }),
+          });
+        }
+
+        return Promise.reject(new Error('Unexpected model'));
+      });
+
+      try {
+        const gemini = new GeminiAiProvider({
+          apiKey: 'mock-key',
+          modelName: 'gemini-3.8-flash',
+          retryOptions: { maxRetries: 0 }, // Fail fast on 3.8-flash to trigger fallback
+          fallbackModels: ['gemini-3.5-flash-lite'],
+        });
+
+        const res = await gemini.generateChatResponse({
+          systemPrompt: 'System',
+          userMessage: 'Help me train',
+        });
+
+        expect(calledModels).toContain('gemini-3.8-flash');
+        expect(calledModels).toContain('gemini-3.5-flash-lite');
+        expect(res.reply).toContain('beginner dumbbell workout');
+        expect(res.modelName).toBe('gemini-3.5-flash-lite');
       } finally {
         globalThis.fetch = originalFetch;
       }
