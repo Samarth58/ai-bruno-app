@@ -90,9 +90,10 @@ export class AiService {
             'AI Coach is currently unavailable: GEMINI_API_KEY or AI_API_KEY is missing for Gemini provider.',
           );
         }
+        const modelName = process.env.AI_MODEL || env.AI_MODEL;
         return new GeminiAiProvider({
           apiKey,
-          modelName: env.AI_MODEL,
+          modelName,
           timeoutMs: env.AI_TIMEOUT_MS,
         });
       }

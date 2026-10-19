@@ -2,12 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { aiService } from '../src/ai/ai.service.js';
 import {
   AiError,
+  AiInvalidCredentialsError,
+  AiModelNotFoundError,
+  AiOverloadedError,
   AiProviderUnavailableError,
+  AiQuotaExhaustedError,
   AiRateLimitError,
   AiTimeoutError,
 } from '../src/ai/ai.types.js';
 import { AnthropicProvider } from '../src/ai/providers/anthropic.provider.js';
-import { GeminiAiProvider } from '../src/ai/providers/gemini.provider.js';
+import {
+  classifyGeminiError,
+  GeminiAiProvider,
+} from '../src/ai/providers/gemini.provider.js';
 import { MockAiProvider } from '../src/ai/providers/mock.provider.js';
 import { OpenAiProvider } from '../src/ai/providers/openai.provider.js';
 import { signAccessToken } from '../src/auth/jwt.js';
@@ -311,6 +318,293 @@ describe('Bruno AI Gym Buddy — AI Integration & Coach Suite', () => {
       customService.setForceUnconfigured(true);
       expect(() => customService.getProvider()).toThrow(AiProviderUnavailableError);
     });
+
+    it('classifyGeminiError maps various upstream error formats to sanitized categories', () => {
+      // 503 Model Overloaded
+      const overload = classifyGeminiError(
+        503,
+        JSON.stringify({
+          error: {
+            code: 503,
+            message:
+              'This model is currently experiencing high demand. Spikes in demand are usually temporary.',
+            status: 'UNAVAILABLE',
+          },
+        }),
+      );
+      expect(overload.category).toBe('MODEL_OVERLOADED');
+      expect(overload.isRetryable).toBe(true);
+      expect(overload.clientMessage).toContain('high demand');
+
+      // 429 Quota Exhausted
+      const quota = classifyGeminiError(
+        429,
+        JSON.stringify({
+          error: {
+            code: 429,
+            message: 'Resource has been exhausted (e.g. check quota).',
+            status: 'RESOURCE_EXHAUSTED',
+            details: [{ reason: 'QUOTA_EXCEEDED' }],
+          },
+        }),
+      );
+      expect(quota.category).toBe('QUOTA_EXHAUSTED');
+      expect(quota.isRetryable).toBe(false);
+      expect(quota.clientMessage).toContain('quota');
+
+      // 429 Transient Rate Limit
+      const rateLimit = classifyGeminiError(
+        429,
+        JSON.stringify({
+          error: {
+            code: 429,
+            message: 'Rate limit exceeded for requests per minute.',
+          },
+        }),
+      );
+      expect(rateLimit.category).toBe('RATE_LIMIT_EXCEEDED');
+      expect(rateLimit.isRetryable).toBe(true);
+      expect(rateLimit.clientMessage).toContain('rate limit');
+
+      // 400 Invalid API Key
+      const invalidKey = classifyGeminiError(
+        400,
+        JSON.stringify({
+          error: {
+            code: 400,
+            message: 'API key not valid. Please pass a valid API key.',
+            status: 'INVALID_ARGUMENT',
+            details: [{ reason: 'API_KEY_INVALID' }],
+          },
+        }),
+      );
+      expect(invalidKey.category).toBe('INVALID_CREDENTIALS');
+      expect(invalidKey.isRetryable).toBe(false);
+      expect(invalidKey.clientMessage).not.toContain('API key not valid');
+
+      // 404 Model Not Found
+      const notFound = classifyGeminiError(
+        404,
+        JSON.stringify({
+          error: {
+            code: 404,
+            message: 'models/gemini-unknown is not found',
+            status: 'NOT_FOUND',
+          },
+        }),
+      );
+      expect(notFound.category).toBe('MODEL_NOT_FOUND');
+      expect(notFound.isRetryable).toBe(false);
+    });
+
+    it('GeminiAiProvider retries transient 503 model overload and succeeds on subsequent attempt', async () => {
+      const originalFetch = globalThis.fetch;
+      let callCount = 0;
+
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve({
+            ok: false,
+            status: 503,
+            text: async () =>
+              JSON.stringify({
+                error: {
+                  code: 503,
+                  message:
+                    'This model is currently experiencing high demand. Spikes in demand are usually temporary.',
+                  status: 'UNAVAILABLE',
+                },
+              }),
+            headers: new Headers(),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            candidates: [
+              {
+                content: {
+                  parts: [{ text: 'Push session planned: 3 sets of DB bench press!' }],
+                },
+              },
+            ],
+          }),
+        });
+      });
+
+      try {
+        const gemini = new GeminiAiProvider({
+          apiKey: 'mock-key',
+          modelName: 'gemini-3.8-flash',
+          retryOptions: { maxRetries: 2, initialDelayMs: 5, maxDelayMs: 10 },
+        });
+
+        const res = await gemini.generateChatResponse({
+          systemPrompt: 'System',
+          userMessage: 'What should I do for chest?',
+        });
+
+        expect(callCount).toBe(2);
+        expect(res.reply).toBe('Push session planned: 3 sets of DB bench press!');
+        expect(res.modelName).toBe('gemini-3.8-flash');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('GeminiAiProvider exhausts bounded retries on persistent 503 model overload and throws AiOverloadedError', async () => {
+      const originalFetch = globalThis.fetch;
+      let callCount = 0;
+
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({
+          ok: false,
+          status: 503,
+          text: async () =>
+            JSON.stringify({
+              error: {
+                code: 503,
+                message:
+                  'This model is currently experiencing high demand. Spikes in demand are usually temporary.',
+                status: 'UNAVAILABLE',
+              },
+            }),
+          headers: new Headers(),
+        });
+      });
+
+      try {
+        const gemini = new GeminiAiProvider({
+          apiKey: 'mock-key',
+          retryOptions: { maxRetries: 2, initialDelayMs: 5, maxDelayMs: 10 },
+        });
+
+        await expect(
+          gemini.generateChatResponse({ systemPrompt: 'System', userMessage: 'test' }),
+        ).rejects.toThrow(AiOverloadedError);
+
+        expect(callCount).toBe(3); // Initial attempt + 2 retries
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('GeminiAiProvider immediately fails without retries on invalid credentials (400/401/403 API_KEY_INVALID)', async () => {
+      const originalFetch = globalThis.fetch;
+      let callCount = 0;
+
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          text: async () =>
+            JSON.stringify({
+              error: {
+                code: 400,
+                message: 'API key not valid. Please pass a valid API key.',
+                status: 'INVALID_ARGUMENT',
+                details: [{ reason: 'API_KEY_INVALID' }],
+              },
+            }),
+          headers: new Headers(),
+        });
+      });
+
+      try {
+        const gemini = new GeminiAiProvider({
+          apiKey: 'invalid-key',
+          retryOptions: { maxRetries: 2, initialDelayMs: 5, maxDelayMs: 10 },
+        });
+
+        await expect(
+          gemini.generateChatResponse({ systemPrompt: '', userMessage: 'test' }),
+        ).rejects.toThrow(AiInvalidCredentialsError);
+
+        expect(callCount).toBe(1); // Must fail fast without retrying bad credentials
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('GeminiAiProvider immediately fails without retries on quota exhaustion', async () => {
+      const originalFetch = globalThis.fetch;
+      let callCount = 0;
+
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({
+          ok: false,
+          status: 429,
+          text: async () =>
+            JSON.stringify({
+              error: {
+                code: 429,
+                message: 'Quota exceeded for quota metric: GenerateContentRequestsPerDay',
+                status: 'RESOURCE_EXHAUSTED',
+                details: [{ reason: 'QUOTA_EXCEEDED' }],
+              },
+            }),
+          headers: new Headers(),
+        });
+      });
+
+      try {
+        const gemini = new GeminiAiProvider({
+          apiKey: 'mock-key',
+          retryOptions: { maxRetries: 2, initialDelayMs: 5, maxDelayMs: 10 },
+        });
+
+        await expect(
+          gemini.generateChatResponse({ systemPrompt: '', userMessage: 'test' }),
+        ).rejects.toThrow(AiQuotaExhaustedError);
+
+        expect(callCount).toBe(1); // Must not retry exhausted daily quota
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('GeminiAiProvider immediately fails without retries on 404 model not found', async () => {
+      const originalFetch = globalThis.fetch;
+      let callCount = 0;
+
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          text: async () =>
+            JSON.stringify({
+              error: {
+                code: 404,
+                message: 'models/unknown-model is not found',
+                status: 'NOT_FOUND',
+              },
+            }),
+          headers: new Headers(),
+        });
+      });
+
+      try {
+        const gemini = new GeminiAiProvider({
+          apiKey: 'mock-key',
+          modelName: 'unknown-model',
+          retryOptions: { maxRetries: 2, initialDelayMs: 5, maxDelayMs: 10 },
+        });
+
+        await expect(
+          gemini.generateChatResponse({ systemPrompt: '', userMessage: 'test' }),
+        ).rejects.toThrow(AiModelNotFoundError);
+
+        expect(callCount).toBe(1);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
   });
 
   // =========================================================================
@@ -608,6 +902,85 @@ describe('Bruno AI Gym Buddy — AI Integration & Coach Suite', () => {
         aiService.setForceUnconfigured(false);
         aiService.setProvider(new MockAiProvider());
       }
+    });
+
+    it('handles model overload (503) gracefully with sanitized client message', async () => {
+      const overloadProvider = new MockAiProvider();
+      vi.spyOn(overloadProvider, 'generateChatResponse').mockRejectedValue(
+        new AiOverloadedError(
+          'The AI model is currently experiencing high demand. Please try again in a few moments.',
+          { provider: 'gemini', model: 'gemini-3.8-flash', upstreamStatus: 503 },
+        ),
+      );
+      aiService.setProvider(overloadProvider);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/coach/chat',
+        headers: { authorization: `Bearer ${validToken}` },
+        payload: {
+          message: 'What should I train today?',
+        },
+      });
+
+      expect(res.statusCode).toBe(503);
+      const json = res.json();
+      expect(json.success).toBe(false);
+      expect(json.error.code).toBe('SERVICE_UNAVAILABLE');
+      expect(json.error.message).toContain('high demand');
+    });
+
+    it('handles quota exhaustion (429) gracefully with sanitized client message', async () => {
+      const quotaProvider = new MockAiProvider();
+      vi.spyOn(quotaProvider, 'generateChatResponse').mockRejectedValue(
+        new AiQuotaExhaustedError(
+          'AI Coach daily quota has been reached. Please try again later.',
+          { provider: 'gemini', model: 'gemini-3.8-flash', upstreamStatus: 429 },
+        ),
+      );
+      aiService.setProvider(quotaProvider);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/coach/chat',
+        headers: { authorization: `Bearer ${validToken}` },
+        payload: {
+          message: 'What should I train today?',
+        },
+      });
+
+      expect(res.statusCode).toBe(429);
+      const json = res.json();
+      expect(json.success).toBe(false);
+      expect(json.error.code).toBe('RATE_LIMIT_EXCEEDED');
+      expect(json.error.message).toContain('quota');
+    });
+
+    it('handles invalid credentials (503) gracefully without leaking API keys', async () => {
+      const credsProvider = new MockAiProvider();
+      vi.spyOn(credsProvider, 'generateChatResponse').mockRejectedValue(
+        new AiInvalidCredentialsError(
+          'AI Coach is temporarily unavailable due to a configuration issue. Please contact support.',
+          { provider: 'gemini', model: 'gemini-3.8-flash', upstreamStatus: 400 },
+        ),
+      );
+      aiService.setProvider(credsProvider);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/coach/chat',
+        headers: { authorization: `Bearer ${validToken}` },
+        payload: {
+          message: 'What should I train today?',
+        },
+      });
+
+      expect(res.statusCode).toBe(503);
+      const json = res.json();
+      expect(json.success).toBe(false);
+      expect(json.error.code).toBe('SERVICE_UNAVAILABLE');
+      expect(json.error.message).not.toContain('key');
+      expect(json.error.message).not.toContain('googleapis.com');
     });
 
     it('documents POST /api/v1/coach/chat in OpenAPI Swagger under AI Coach tag', async () => {

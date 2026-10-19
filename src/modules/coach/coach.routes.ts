@@ -77,6 +77,18 @@ export async function coachRoutes(app: FastifyInstance): Promise<void> {
         }
 
         if (err instanceof AiError) {
+          request.log.warn(
+            {
+              provider: err.provider,
+              model: err.model,
+              upstreamStatus: err.upstreamStatus,
+              errorCategory: err.category,
+              code: err.code,
+              statusCode: err.statusCode,
+            },
+            `AI Coach request failed with [${err.category}]`,
+          );
+
           return reply
             .status(err.statusCode)
             .send(fail(err.code, err.message));
