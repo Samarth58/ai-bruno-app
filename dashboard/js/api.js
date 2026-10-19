@@ -90,64 +90,12 @@ export async function apiRequest(endpoint, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
+  let response;
   try {
-    const response = await fetch(url, {
+    response = await fetch(url, {
       ...options,
       headers,
     });
-
-    // Check for 401 Unauthorized -> Attempt Token Refresh
-    if (response.status === 401 && !endpoint.includes('/login') && !endpoint.includes('/refresh')) {
-      const refreshToken = TokenStore.getRefreshToken();
-      if (refreshToken) {
-        if (!isRefreshing) {
-          isRefreshing = true;
-          try {
-            const refreshRes = await fetch(`${API_CONFIG.baseUrl}/api/v1/refresh`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refreshToken }),
-            });
-            const refreshJson = await refreshRes.json();
-            const newAccessToken = refreshJson.data?.token || refreshJson.data?.accessToken || refreshJson.data?.tokens?.accessToken;
-            const newRefreshToken = refreshJson.data?.refreshToken || refreshJson.data?.tokens?.refreshToken;
-            if (refreshJson.success && newAccessToken) {
-              TokenStore.setAccessToken(newAccessToken);
-              if (newRefreshToken) TokenStore.setRefreshToken(newRefreshToken);
-              onRefreshed(newAccessToken);
-              isRefreshing = false;
-              // Retry original request
-              headers.Authorization = `Bearer ${newAccessToken}`;
-              const retryRes = await fetch(url, { ...options, headers });
-              return await handleEnvelope(retryRes);
-            }
-          } catch {
-            // Refresh failed
-          }
-          isRefreshing = false;
-          TokenStore.clear();
-          window.dispatchEvent(new CustomEvent('bruno:auth-expired'));
-        } else {
-          // Wait for current refresh
-          return new Promise((resolve, reject) => {
-            subscribeTokenRefresh(async (newToken) => {
-              try {
-                headers.Authorization = `Bearer ${newToken}`;
-                const retryRes = await fetch(url, { ...options, headers });
-                resolve(await handleEnvelope(retryRes));
-              } catch (err) {
-                reject(err);
-              }
-            });
-          });
-        }
-      } else {
-        TokenStore.clear();
-        window.dispatchEvent(new CustomEvent('bruno:auth-expired'));
-      }
-    }
-
-    return await handleEnvelope(response);
   } catch (networkError) {
     console.error('API Network Error:', networkError);
     throw {
@@ -156,6 +104,70 @@ export async function apiRequest(endpoint, options = {}) {
       details: [],
     };
   }
+
+  // Check for 401 Unauthorized -> Attempt Token Refresh (only for authenticated routes)
+  const isAuthRoute =
+    cleanEndpoint.includes('/login') ||
+    cleanEndpoint.includes('/refresh') ||
+    cleanEndpoint.includes('/register') ||
+    cleanEndpoint.includes('/forgot-password') ||
+    cleanEndpoint.includes('/reset-password');
+
+  if (response.status === 401 && !isAuthRoute) {
+    const refreshToken = TokenStore.getRefreshToken();
+    if (refreshToken) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const refreshRes = await fetch(`${API_CONFIG.baseUrl}/api/v1/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          });
+          const refreshJson = await refreshRes.json();
+          const newAccessToken =
+            refreshJson.data?.token ||
+            refreshJson.data?.accessToken ||
+            refreshJson.data?.tokens?.accessToken;
+          const newRefreshToken =
+            refreshJson.data?.refreshToken || refreshJson.data?.tokens?.refreshToken;
+          if (refreshJson.success && newAccessToken) {
+            TokenStore.setAccessToken(newAccessToken);
+            if (newRefreshToken) TokenStore.setRefreshToken(newRefreshToken);
+            onRefreshed(newAccessToken);
+            isRefreshing = false;
+            // Retry original request
+            headers.Authorization = `Bearer ${newAccessToken}`;
+            const retryRes = await fetch(url, { ...options, headers });
+            return await handleEnvelope(retryRes);
+          }
+        } catch {
+          // Refresh failed
+        }
+        isRefreshing = false;
+        TokenStore.clear();
+        window.dispatchEvent(new CustomEvent('bruno:auth-expired'));
+      } else {
+        // Wait for current refresh
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh(async (newToken) => {
+            try {
+              headers.Authorization = `Bearer ${newToken}`;
+              const retryRes = await fetch(url, { ...options, headers });
+              resolve(await handleEnvelope(retryRes));
+            } catch (err) {
+              reject(err);
+            }
+          });
+        });
+      }
+    } else {
+      TokenStore.clear();
+      window.dispatchEvent(new CustomEvent('bruno:auth-expired'));
+    }
+  }
+
+  return await handleEnvelope(response);
 }
 
 async function handleEnvelope(response) {
@@ -170,7 +182,7 @@ async function handleEnvelope(response) {
     };
   }
 
-  if (response.ok && json.success) {
+  if (response.ok && json?.success) {
     return {
       data: json.data,
       meta: json.meta,
@@ -179,10 +191,10 @@ async function handleEnvelope(response) {
   }
 
   // Handle standard error envelope
-  const errorObj = json.error || {
-    code: 'UNKNOWN_ERROR',
-    message: json.message || `Request failed with HTTP status ${response.status}`,
-    details: [],
+  const errorObj = json?.error || {
+    code: json?.code || 'UNKNOWN_ERROR',
+    message: json?.message || `Request failed with HTTP status ${response.status}`,
+    details: json?.details || [],
   };
   errorObj.status = response.status;
   throw errorObj;

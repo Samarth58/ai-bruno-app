@@ -1,4 +1,5 @@
 import { buildApp } from './app.js';
+import { bootstrapAdmin } from './auth/bootstrapAdmin.js';
 import { env } from './config/env.js';
 import { pool } from './db/connection.js';
 
@@ -47,4 +48,5 @@ process.on('uncaughtException', (err) => {
   void gracefulShutdown('uncaughtException');
 });
 
+await bootstrapAdmin();
 await app.listen({ port: env.PORT, host: '0.0.0.0' });
