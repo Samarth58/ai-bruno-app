@@ -10,13 +10,16 @@ import { fail, ok } from '../../utils/response.js';
 import { coachChatBodySchema, coachChatRequestSchema } from './coach.schema.js';
 import {
   CoachResourceNotFoundError,
+  getMascotState,
+  getPreSessionBriefing,
+  getWeeklyReview,
   processCoachChat,
 } from './coach.service.js';
 
 export async function coachRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', authGuard);
 
-  // POST /coach/chat
+  // 1. POST /coach/chat
   app.post(
     '/coach/chat',
     {
@@ -98,6 +101,81 @@ export async function coachRoutes(app: FastifyInstance): Promise<void> {
         return reply
           .status(500)
           .send(fail('INTERNAL_SERVER_ERROR', 'Failed to generate coaching response', []));
+      }
+    },
+  );
+
+  // 2. GET /coach/briefing
+  app.get(
+    '/coach/briefing',
+    {
+      schema: {
+        tags: ['AI Coach'],
+        summary: 'Get pre-session coaching briefing',
+        description:
+          "Provides today's planned workout routine, previous-session performance, recovery readiness, and a tailored coaching tip.",
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      try {
+        const briefing = await getPreSessionBriefing(request.userId!);
+        return reply.status(200).send(ok(briefing));
+      } catch (err: unknown) {
+        request.log.error(err, 'Failed to generate pre-session briefing');
+        return reply
+          .status(500)
+          .send(fail('INTERNAL_SERVER_ERROR', 'Failed to retrieve pre-session briefing'));
+      }
+    },
+  );
+
+  // 3. GET /coach/weekly-review
+  app.get(
+    '/coach/weekly-review',
+    {
+      schema: {
+        tags: ['AI Coach'],
+        summary: 'Get weekly coaching review and consistency verdict',
+        description:
+          "Summarizes the current calendar week's completed workouts, working sets, total tonnage, and adherence verdict.",
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      try {
+        const review = await getWeeklyReview(request.userId!);
+        return reply.status(200).send(ok(review));
+      } catch (err: unknown) {
+        request.log.error(err, 'Failed to generate weekly review');
+        return reply
+          .status(500)
+          .send(fail('INTERNAL_SERVER_ERROR', 'Failed to retrieve weekly review'));
+      }
+    },
+  );
+
+  // 4. GET /coach/mascot-state
+  app.get(
+    '/coach/mascot-state',
+    {
+      schema: {
+        tags: ['AI Coach'],
+        summary: 'Get mascot visual animation state',
+        description:
+          "Returns Bruno's mascot visual state (approving_nod, studying_journal, waiting_with_watch) based on real user adherence and systemic recovery.",
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      try {
+        const mascot = await getMascotState(request.userId!);
+        return reply.status(200).send(ok(mascot));
+      } catch (err: unknown) {
+        request.log.error(err, 'Failed to determine mascot state');
+        return reply
+          .status(500)
+          .send(fail('INTERNAL_SERVER_ERROR', 'Failed to determine mascot state'));
       }
     },
   );

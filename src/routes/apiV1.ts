@@ -9,6 +9,8 @@ import { exercisesRoutes } from '../modules/exercises/index.js';
 import { coachRoutes } from '../modules/coach/index.js';
 import { programsRoutes } from '../modules/programs/index.js';
 import { sessionsRoutes } from '../modules/sessions/index.js';
+import { overloadRoutes } from '../modules/overload/index.js';
+import { analyticsRoutes } from '../modules/analytics/index.js';
 
 /**
  * Aggregates all v1 API domain routes.
@@ -25,6 +27,9 @@ export async function apiV1Routes(app: FastifyInstance): Promise<void> {
   await app.register(coachRoutes);
   await app.register(programsRoutes);
   await app.register(sessionsRoutes);
+  await app.register(overloadRoutes);
+  await app.register(analyticsRoutes);
 }
+
 
 

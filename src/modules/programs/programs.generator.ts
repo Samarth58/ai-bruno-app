@@ -1,5 +1,9 @@
 import type { Exercise, GymProfile, UserConstraint } from '../../db/schema.js';
 import { filterExercises } from '../exercises/exerciseFilter.js';
+import {
+  seedExerciseTargetWeight,
+  type BaselineStrengthBenchmark,
+} from './programs.baseline.js';
 import type { GenerateProgramInput } from './programs.schema.js';
 
 export interface GeneratedRoutineExercise {
@@ -9,6 +13,7 @@ export interface GeneratedRoutineExercise {
   prescribedSets: number;
   repRangeMin: number;
   repRangeMax: number;
+  targetWeightKg?: number | null;
   targetRpe: number;
   restSeconds: number;
   notes?: string;
@@ -44,6 +49,16 @@ interface RoutineTemplate {
   slots: RoutineTemplateSlot[];
 }
 
+export class ProgramValidationError extends Error {
+  public readonly code = 'VALIDATION_ERROR';
+  public readonly statusCode = 400;
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProgramValidationError';
+  }
+}
+
 /**
  * Science-based workout program generation engine.
  * Tailors volume, rest periods, rep ranges, and movement patterns
@@ -54,8 +69,9 @@ export function generateWorkoutProgramPlan(params: {
   exercises: Exercise[];
   gymProfile: GymProfile | null;
   activeConstraints: UserConstraint[];
+  baselines?: BaselineStrengthBenchmark[];
 }): GeneratedProgramPlan {
-  const { input, exercises, gymProfile, activeConstraints } = params;
+  const { input, exercises, gymProfile, activeConstraints, baselines = [] } = params;
 
   // 1. Run deterministic exercise safety and equipment filtering
   const filterResult = filterExercises({
@@ -67,7 +83,7 @@ export function generateWorkoutProgramPlan(params: {
 
   const compatiblePool = filterResult.compatible;
   if (compatiblePool.length === 0) {
-    throw new Error(
+    throw new ProgramValidationError(
       'Unable to generate program: No compatible exercises match your current equipment and injury restrictions.',
     );
   }
@@ -136,6 +152,18 @@ export function generateWorkoutProgramPlan(params: {
 
       if (match) {
         selectedExercisesInDay.add(match.id);
+
+        const targetWeightKg =
+          baselines.length > 0
+            ? seedExerciseTargetWeight({
+                exercise: match,
+                repRangeMin,
+                repRangeMax,
+                baselines,
+                gymProfile,
+              })
+            : null;
+
         routineExercisesList.push({
           exerciseId: match.id,
           exerciseName: match.name,
@@ -143,6 +171,7 @@ export function generateWorkoutProgramPlan(params: {
           prescribedSets: defaultSets,
           repRangeMin,
           repRangeMax,
+          targetWeightKg,
           targetRpe: defaultRpe,
           restSeconds: defaultRest,
           notes: `${slot.label} - Focus on controlled eccentric and clean form.`,

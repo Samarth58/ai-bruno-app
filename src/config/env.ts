@@ -42,6 +42,14 @@ export const envSchema = z.object({
   AI_BASE_URL: z.string().url().optional(),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   AI_MAX_TOKENS: z.coerce.number().int().positive().default(600),
+
+  // Brevo Transactional Email & Password Recovery Configuration
+  BREVO_API_KEY: z.string().optional(),
+  BREVO_SENDER_NAME: z.string().default('Bruno AI Gym Buddy'),
+  BREVO_SENDER_EMAIL: z.string().email().optional(),
+  PASSWORD_RESET_OTP_TTL_MINUTES: z.coerce.number().int().positive().default(5),
+  PASSWORD_RESET_OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  PASSWORD_RESET_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().positive().default(60),
 });
 
 export type Env = z.infer<typeof envSchema>;

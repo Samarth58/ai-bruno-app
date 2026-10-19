@@ -7,12 +7,18 @@ import {
   findAllActiveExercises,
   findExerciseById,
 } from '../exercises/exercises.repository.js';
-import {
-  findDefaultGymProfile,
+import { findDefaultGymProfile,
   findGymProfileById,
   findGymProfilesByUserId,
 } from '../gymProfiles/gymProfiles.repository.js';
-import { generateWorkoutProgramPlan } from './programs.generator.js';
+import {
+  findUserHistoricalBaselines,
+  resolveUserBaselineBenchmarks,
+} from './programs.baseline.js';
+import {
+  generateWorkoutProgramPlan,
+  ProgramValidationError,
+} from './programs.generator.js';
 import {
   activateProgramById,
   deleteRoutineExerciseById,
@@ -20,6 +26,7 @@ import {
   findProgramsByUserId,
   findRoutineByIdWithOwnership,
   findRoutineExerciseByIdWithOwnership,
+  findRoutineExercisesByRoutineId,
   insertProgram,
   insertProgramWithPlan,
   insertRoutine,
@@ -39,6 +46,8 @@ import type {
   CreateRoutineInput,
   GenerateProgramInput,
   RoutineExerciseRow,
+  SmartSwapAlternativesResult,
+  SwapAlternativeExercise,
   SwapRoutineExerciseInput,
   UpdateProgramInput,
   UpdateRoutineExerciseInput,
@@ -57,15 +66,7 @@ export class ProgramResourceNotFoundError extends Error {
   }
 }
 
-export class ProgramValidationError extends Error {
-  public readonly code = 'VALIDATION_ERROR';
-  public readonly statusCode = 400;
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'ProgramValidationError';
-  }
-}
+export { ProgramValidationError };
 
 /**
  * Generates a periodized, equipment-grounded, and injury-safe workout program.
@@ -95,15 +96,23 @@ export async function generatePersonalizedProgram(
   // 3. Resolve Exercise Catalog
   const allExercises = await findAllActiveExercises();
 
-  // 4. Run Algorithmic Generation
+  // 4. Resolve Baseline Strength Benchmarks (explicit inputs + historical workout logs)
+  const historicalBaselines = await findUserHistoricalBaselines(userId);
+  const resolvedBaselines = resolveUserBaselineBenchmarks(
+    input.baselineLifts,
+    historicalBaselines,
+  );
+
+  // 5. Run Algorithmic Generation with Baseline Seeding
   const plan = generateWorkoutProgramPlan({
     input,
     exercises: allExercises,
     gymProfile,
     activeConstraints,
+    baselines: resolvedBaselines,
   });
 
-  // 5. Persist Atomically
+  // 6. Persist Atomically
   return await insertProgramWithPlan(userId, plan);
 }
 
@@ -325,4 +334,195 @@ export async function swapRoutineExercise(
   }
 
   return updated;
+}
+
+/**
+ * Returns up to 3 smart machine swap replacement alternatives for an occupied exercise.
+ * Evaluates primary muscle groups, movement patterns, gym hardware profile,
+ * and user active injury constraints, while excluding exercises already in the routine.
+ */
+export async function getSmartSwapAlternatives(
+  routineId: string,
+  routineExerciseId: string,
+  userId: string,
+): Promise<SmartSwapAlternativesResult> {
+  // 1. Verify routine exercise ownership and routine association
+  const re = await findRoutineExerciseByIdWithOwnership(routineExerciseId, userId);
+  if (!re || re.routineId !== routineId) {
+    throw new ProgramResourceNotFoundError('Prescribed exercise not found in routine');
+  }
+
+  // 2. Fetch original exercise details
+  const currentExercise = await findExerciseById(re.exerciseId);
+  if (!currentExercise) {
+    throw new ProgramResourceNotFoundError('Prescribed exercise details not found');
+  }
+
+  // 3. Resolve active gym equipment profile
+  let gymProfile = null;
+  if (re.gymProfileId) {
+    gymProfile = await findGymProfileById(re.gymProfileId, userId);
+  } else {
+    gymProfile = await findDefaultGymProfile(userId);
+    if (!gymProfile) {
+      const userProfiles = await findGymProfilesByUserId(userId);
+      gymProfile = userProfiles[0] ?? null;
+    }
+  }
+
+  // 4. Resolve active physical injury constraints
+  const activeConstraints = await findConstraintsByUserId(userId, true);
+
+  // 5. Query all exercises already in this routine to avoid duplicate prescriptions
+  const routineRows = await findRoutineExercisesByRoutineId(routineId);
+  const existingExerciseIds = new Set(routineRows.map((r) => r.exerciseId));
+  // Ensure the current exercise is excluded
+  existingExerciseIds.add(currentExercise.id);
+
+  // 6. Fetch full catalog of active exercises
+  const allExercises = await findAllActiveExercises();
+
+  // 7. Filter and rank alternatives
+  const currentMuscle = currentExercise.primaryMuscleGroup.toLowerCase().trim();
+  const currentPattern = currentExercise.movementPattern.toLowerCase().trim();
+  const currentSecondary = (currentExercise.secondaryMuscleGroups ?? []).map((m) =>
+    m.toLowerCase().trim(),
+  );
+
+  interface ScoredCandidate {
+    exercise: (typeof allExercises)[0];
+    score: number;
+    matchType: 'exact_match' | 'movement_pattern_match' | 'muscle_group_match' | 'synergist_match';
+    matchReason: string;
+  }
+
+  const scoredCandidates: ScoredCandidate[] = [];
+
+  for (const ex of allExercises) {
+    // Exclude exercises already in this routine (including original exercise)
+    if (existingExerciseIds.has(ex.id)) {
+      continue;
+    }
+
+    // Check equipment compatibility
+    if (gymProfile) {
+      const isEquipOk = isExerciseEquipmentCompatible(ex, gymProfile);
+      if (!isEquipOk) {
+        continue;
+      }
+    }
+
+    // Check active injury contraindications
+    if (activeConstraints.length > 0) {
+      const isContra = isExerciseContraindicated(ex.contraindicatedInjuries, activeConstraints);
+      if (isContra) {
+        continue;
+      }
+    }
+
+    const candMuscle = ex.primaryMuscleGroup.toLowerCase().trim();
+    const candPattern = ex.movementPattern.toLowerCase().trim();
+    const candSecondary = (ex.secondaryMuscleGroups ?? []).map((m) =>
+      m.toLowerCase().trim(),
+    );
+
+    const sameMuscle = candMuscle === currentMuscle;
+    const samePattern = candPattern === currentPattern;
+    const secondaryOverlap =
+      candSecondary.includes(currentMuscle) ||
+      currentSecondary.includes(candMuscle) ||
+      candSecondary.some((m) => currentSecondary.includes(m));
+
+    let score = 0;
+    let matchType: ScoredCandidate['matchType'] = 'synergist_match';
+    let matchReason = '';
+
+    if (sameMuscle && samePattern) {
+      score = 100;
+      matchType = 'exact_match';
+      matchReason = `Exact match: Targets ${ex.primaryMuscleGroup} with identical ${ex.movementPattern} movement pattern using available ${ex.requiredEquipment}.`;
+    } else if (samePattern) {
+      score = 75;
+      matchType = 'movement_pattern_match';
+      matchReason = `Movement pattern match: Shares ${ex.movementPattern} pattern, targeting ${ex.primaryMuscleGroup} using available ${ex.requiredEquipment}.`;
+    } else if (sameMuscle) {
+      score = 60;
+      matchType = 'muscle_group_match';
+      matchReason = `Muscle group match: Targets ${ex.primaryMuscleGroup} with ${ex.movementPattern} pattern using available ${ex.requiredEquipment}.`;
+    } else if (secondaryOverlap) {
+      score = 40;
+      matchType = 'synergist_match';
+      matchReason = `Synergist match: Engages shared muscle groups using available ${ex.requiredEquipment}.`;
+    } else {
+      // Not a biomechanically suitable swap candidate
+      continue;
+    }
+
+    scoredCandidates.push({
+      exercise: ex,
+      score,
+      matchType,
+      matchReason,
+    });
+  }
+
+  // Sort candidates by score descending, then alphabetical name for deterministic order
+  scoredCandidates.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    return a.exercise.name.localeCompare(b.exercise.name);
+  });
+
+  // Pick top 3 candidates
+  const topCandidates = scoredCandidates.slice(0, 3);
+
+  const alternatives: SwapAlternativeExercise[] = topCandidates.map((c) => ({
+    id: c.exercise.id,
+    name: c.exercise.name,
+    primaryMuscleGroup: c.exercise.primaryMuscleGroup,
+    secondaryMuscleGroups: c.exercise.secondaryMuscleGroups,
+    movementPattern: c.exercise.movementPattern,
+    requiredEquipment: c.exercise.requiredEquipment,
+    instructions: c.exercise.instructions,
+    matchType: c.matchType,
+    matchScore: c.score,
+    matchReason: c.matchReason,
+    swapPayload: {
+      replacementExerciseId: c.exercise.id,
+      reason: `Machine busy: swapped to ${c.exercise.name} (${c.exercise.requiredEquipment})`,
+    },
+  }));
+
+  return {
+    routineId,
+    routineExerciseId,
+    currentExercise: {
+      id: currentExercise.id,
+      name: currentExercise.name,
+      primaryMuscleGroup: currentExercise.primaryMuscleGroup,
+      secondaryMuscleGroups: currentExercise.secondaryMuscleGroups,
+      movementPattern: currentExercise.movementPattern,
+      requiredEquipment: currentExercise.requiredEquipment,
+      prescribedSets: re.prescribedSets,
+      repRangeMin: re.repRangeMin,
+      repRangeMax: re.repRangeMax,
+      targetWeightKg: re.targetWeightKg,
+      targetRpe: re.targetRpe,
+    },
+    gymProfile: gymProfile
+      ? {
+          id: gymProfile.id,
+          name: gymProfile.name,
+          environmentType: gymProfile.environmentType,
+        }
+      : null,
+    activeConstraintsCount: activeConstraints.length,
+    alternatives,
+    totalFound: alternatives.length,
+    message:
+      alternatives.length === 0
+        ? 'No suitable replacement exercises found that match your available equipment and injury restrictions.'
+        : undefined,
+  };
 }

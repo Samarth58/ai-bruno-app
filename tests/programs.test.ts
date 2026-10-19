@@ -2,6 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Exercise, GymProfile, UserConstraint } from '../src/db/schema.js';
 import { curatedExercises } from '../src/db/seeds/exercises.js';
 import {
+  parseInputBaselines,
+  resolveUserBaselineBenchmarks,
+  seedExerciseTargetWeight,
+  normalizeLiftKey,
+  type BaselineStrengthBenchmark,
+} from '../src/modules/programs/programs.baseline.js';
+import {
   generateWorkoutProgramPlan,
   ProgramValidationError as GeneratorValidationError,
 } from '../src/modules/programs/programs.generator.js';
@@ -95,6 +102,7 @@ vi.mock('../src/modules/programs/programs.service.js', async (importOriginal) =>
               prescribedSets: 3,
               repRangeMin: 8,
               repRangeMax: 12,
+              targetWeightKg: input.baselineLifts ? 25.0 : null,
               targetRpe: 8,
               restSeconds: 90,
               exercise: {
@@ -257,7 +265,113 @@ vi.mock('../src/modules/programs/programs.service.js', async (importOriginal) =>
         },
       };
     }),
-
+    getSmartSwapAlternatives: vi.fn(async (routineId: string, id: string, userId: string) => {
+      if (id === '00000000-0000-0000-0000-000000000000' || userId !== mockUser.id) {
+        throw new actual.ProgramResourceNotFoundError('Prescribed exercise not found in routine');
+      }
+      if (id === '88888888-8888-8888-8888-888888888888') {
+        return {
+          routineId,
+          routineExerciseId: id,
+          currentExercise: {
+            id: '44444444-4444-4444-4444-444444444444',
+            name: 'Pec Deck Fly',
+            primaryMuscleGroup: 'chest',
+            secondaryMuscleGroups: [],
+            movementPattern: 'isolation',
+            requiredEquipment: 'machine',
+            prescribedSets: 3,
+            repRangeMin: 12,
+            repRangeMax: 15,
+            targetWeightKg: 45,
+            targetRpe: 8,
+          },
+          gymProfile: {
+            id: '22222222-2222-2222-2222-222222222222',
+            name: 'Home Dumbbells',
+            environmentType: 'home',
+          },
+          activeConstraintsCount: 2,
+          alternatives: [],
+          totalFound: 0,
+          message: 'No suitable replacement exercises found that match your available equipment and injury restrictions.',
+        };
+      }
+      return {
+        routineId,
+        routineExerciseId: id,
+        currentExercise: {
+          id: '44444444-4444-4444-4444-444444444444',
+          name: 'Barbell Flat Bench Press',
+          primaryMuscleGroup: 'chest',
+          secondaryMuscleGroups: ['triceps', 'shoulders'],
+          movementPattern: 'horizontal_push',
+          requiredEquipment: 'barbell',
+          prescribedSets: 3,
+          repRangeMin: 8,
+          repRangeMax: 10,
+          targetWeightKg: 80,
+          targetRpe: 8,
+        },
+        gymProfile: {
+          id: '22222222-2222-2222-2222-222222222222',
+          name: 'Commercial Gym',
+          environmentType: 'commercial',
+        },
+        activeConstraintsCount: 0,
+        alternatives: [
+          {
+            id: '00000000-0000-0000-0000-000000000005',
+            name: 'Dumbbell Bench Press',
+            primaryMuscleGroup: 'chest',
+            secondaryMuscleGroups: ['triceps', 'shoulders'],
+            movementPattern: 'horizontal_push',
+            requiredEquipment: 'dumbbell',
+            instructions: 'Flat bench dumbbell press',
+            matchType: 'exact_match',
+            matchScore: 100,
+            matchReason: 'Exact match: Targets chest with identical horizontal_push pattern',
+            swapPayload: {
+              replacementExerciseId: '00000000-0000-0000-0000-000000000005',
+              reason: 'Machine busy: swapped to Dumbbell Bench Press (dumbbell)',
+            },
+          },
+          {
+            id: '00000000-0000-0000-0000-000000000006',
+            name: 'Incline Dumbbell Bench Press',
+            primaryMuscleGroup: 'chest',
+            secondaryMuscleGroups: ['triceps', 'shoulders'],
+            movementPattern: 'horizontal_push',
+            requiredEquipment: 'dumbbell',
+            instructions: 'Incline dumbbell press at 30 degrees',
+            matchType: 'exact_match',
+            matchScore: 100,
+            matchReason: 'Exact match: Targets chest with identical horizontal_push pattern',
+            swapPayload: {
+              replacementExerciseId: '00000000-0000-0000-0000-000000000006',
+              reason: 'Machine busy: swapped to Incline Dumbbell Bench Press (dumbbell)',
+            },
+          },
+          {
+            id: '00000000-0000-0000-0000-000000000007',
+            name: 'Seated Chest Press Machine',
+            primaryMuscleGroup: 'chest',
+            secondaryMuscleGroups: ['triceps', 'shoulders'],
+            movementPattern: 'horizontal_push',
+            requiredEquipment: 'machine',
+            instructions: 'Pin-loaded chest press machine',
+            matchType: 'exact_match',
+            matchScore: 100,
+            matchReason: 'Exact match: Targets chest with identical horizontal_push pattern',
+            swapPayload: {
+              replacementExerciseId: '00000000-0000-0000-0000-000000000007',
+              reason: 'Machine busy: swapped to Seated Chest Press Machine (machine)',
+            },
+          },
+        ],
+        totalFound: 3,
+      };
+    }),
   };
 });
 
@@ -488,6 +602,274 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
   });
 
   // -------------------------------------------------------------------------
+  // Part A2: Baseline Strength Seeding and Program Generator Polish
+  // -------------------------------------------------------------------------
+  describe('Baseline Strength Seeding & Weight Calculation Engine', () => {
+    const dbExercises: Exercise[] = curatedExercises.map((seed, index) => ({
+      id: `00000000-0000-0000-0000-${String(index + 1).padStart(12, '0')}`,
+      name: seed.name,
+      primaryMuscleGroup: seed.primaryMuscleGroup,
+      secondaryMuscleGroups: seed.secondaryMuscleGroups,
+      movementPattern: seed.movementPattern,
+      requiredEquipment: seed.requiredEquipment,
+      contraindicatedInjuries: seed.contraindicatedInjuries,
+      instructions: seed.instructions ?? null,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    const commercialGymProfile: GymProfile = {
+      id: '22222222-2222-2222-2222-222222222222',
+      userId: mockUser.id,
+      name: 'Commercial Gym',
+      environmentType: 'commercial',
+      maxDumbbellWeightKg: 50,
+      hasBarbell: true,
+      hasDumbbells: true,
+      hasMachines: true,
+      hasCableStack: true,
+      hasSmithMachine: true,
+      hasSquatRack: true,
+      hasBench: true,
+      hasAdjustableBench: true,
+      hasPullupBar: true,
+      hasDipStation: true,
+      hasResistanceBands: true,
+      hasKettlebells: true,
+      hasCardioEquipment: true,
+      customEquipment: [],
+      isDefault: true,
+      notes: null,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const cappedDumbbellGymProfile: GymProfile = {
+      ...commercialGymProfile,
+      id: '33333333-3333-3333-3333-333333333333',
+      maxDumbbellWeightKg: 15,
+    };
+
+    it('seeds targetWeightKg when baseline lifts are present using defensible biomechanical ratios', () => {
+      const explicitBaselines = parseInputBaselines({
+        benchPress: 100, // 100kg flat barbell bench press
+        squat: 140, // 140kg barbell back squat
+        deadlift: 180, // 180kg conventional deadlift
+        overheadPress: 60, // 60kg overhead press
+      });
+
+      const plan = generateWorkoutProgramPlan({
+        input: {
+          splitType: 'full_body',
+          trainingDaysPerWeek: 3,
+          goal: 'hypertrophy', // 8-12 reps -> avg 10 reps -> divider = 1 + 10/30 = 1.3333
+          targetSessionDurationMinutes: 45,
+        },
+        exercises: dbExercises,
+        gymProfile: commercialGymProfile,
+        activeConstraints: [],
+        baselines: explicitBaselines,
+      });
+
+      // Find specific exercises in generated plan
+      const allExercises = plan.routines.flatMap((r) => r.exercises);
+      const benchEx = allExercises.find((e) => e.exerciseName === 'Barbell Bench Press');
+      const squatEx = allExercises.find((e) => e.exerciseName === 'Barbell Back Squat');
+
+      if (benchEx) {
+        // 100 / 1.3333 = 75 kg
+        expect(benchEx.targetWeightKg).toBe(75.0);
+      }
+      if (squatEx) {
+        // 140 / 1.3333 = 105 kg
+        expect(squatEx.targetWeightKg).toBe(105.0);
+      }
+
+      // Check that seeded exercises have valid rounded weights in 2.5kg increments
+      for (const ex of allExercises) {
+        if (ex.targetWeightKg !== null && ex.targetWeightKg !== undefined) {
+          expect(ex.targetWeightKg).toBeGreaterThan(0);
+          expect(ex.targetWeightKg % 2.5).toBe(0);
+        }
+      }
+    });
+
+    it('keeps targetWeightKg as null when baseline data is absent without failing generation', () => {
+      const plan = generateWorkoutProgramPlan({
+        input: {
+          splitType: 'full_body',
+          trainingDaysPerWeek: 3,
+          goal: 'hypertrophy',
+          targetSessionDurationMinutes: 45,
+        },
+        exercises: dbExercises,
+        gymProfile: commercialGymProfile,
+        activeConstraints: [],
+        baselines: [], // No baselines
+      });
+
+      expect(plan.routines.length).toBe(3);
+      for (const routine of plan.routines) {
+        for (const ex of routine.exercises) {
+          expect(ex.targetWeightKg).toBeNull();
+        }
+      }
+    });
+
+    it('maps compound baselines to compatible exercises while leaving incompatible isolation/bodyweight as null', () => {
+      const baselines = parseInputBaselines({
+        benchPress: 100, // Only bench press provided
+      });
+
+      const flatBench = dbExercises.find((e) => e.name === 'Barbell Bench Press')!;
+      const inclineDb = dbExercises.find((e) => e.name === 'Incline Dumbbell Press')!;
+      const cableFlye = dbExercises.find((e) => e.name === 'Cable Chest Flye')!; // Isolation
+      const pushUp = dbExercises.find((e) => e.name === 'Push-Up')!; // Bodyweight
+      const squat = dbExercises.find((e) => e.name === 'Barbell Back Squat')!; // Different movement pattern
+
+      // 1. Flat Barbell Bench: 100kg 1RM, 10 reps -> 75kg
+      const flatBenchWeight = seedExerciseTargetWeight({
+        exercise: flatBench,
+        repRangeMin: 8,
+        repRangeMax: 12,
+        baselines,
+        gymProfile: commercialGymProfile,
+      });
+      expect(flatBenchWeight).toBe(75.0);
+
+      // 2. Incline DB Press: 75kg * 0.28 = 21kg -> rounded to 20.0kg per dumbbell
+      const inclineDbWeight = seedExerciseTargetWeight({
+        exercise: inclineDb,
+        repRangeMin: 8,
+        repRangeMax: 12,
+        baselines,
+        gymProfile: commercialGymProfile,
+      });
+      expect(inclineDbWeight).toBe(20.0);
+
+      // 3. Cable Chest Flye: isolation -> must remain null
+      const cableFlyeWeight = seedExerciseTargetWeight({
+        exercise: cableFlye,
+        repRangeMin: 12,
+        repRangeMax: 15,
+        baselines,
+        gymProfile: commercialGymProfile,
+      });
+      expect(cableFlyeWeight).toBeNull();
+
+      // 4. Push-Up: bodyweight -> must remain null
+      const pushUpWeight = seedExerciseTargetWeight({
+        exercise: pushUp,
+        repRangeMin: 10,
+        repRangeMax: 15,
+        baselines,
+        gymProfile: commercialGymProfile,
+      });
+      expect(pushUpWeight).toBeNull();
+
+      // 5. Squat: different movement pattern -> must remain null
+      const squatWeight = seedExerciseTargetWeight({
+        exercise: squat,
+        repRangeMin: 8,
+        repRangeMax: 10,
+        baselines,
+        gymProfile: commercialGymProfile,
+      });
+      expect(squatWeight).toBeNull();
+    });
+
+    it('respects equipment restrictions by capping dumbbell targetWeightKg to maxDumbbellWeightKg', () => {
+      // Strong lifter: 140kg bench press -> normal DB press would be ~33kg per hand
+      const baselines = parseInputBaselines({
+        benchPress: 140,
+      });
+
+      const dbBench = dbExercises.find((e) => e.name === 'Dumbbell Bench Press')!;
+
+      // With standard profile (max 50kg), calculated is ~32.5-35kg
+      const uncappedWeight = seedExerciseTargetWeight({
+        exercise: dbBench,
+        repRangeMin: 8,
+        repRangeMax: 10,
+        baselines,
+        gymProfile: commercialGymProfile,
+      });
+      expect(uncappedWeight).toBeGreaterThan(15);
+
+      // With capped profile (max 15kg), must not exceed 15kg
+      const cappedWeight = seedExerciseTargetWeight({
+        exercise: dbBench,
+        repRangeMin: 8,
+        repRangeMax: 10,
+        baselines,
+        gymProfile: cappedDumbbellGymProfile,
+      });
+      expect(cappedWeight).toBe(15.0);
+    });
+
+    it('strictly enforces valid non-negative weights and standard Olympic bar minimums', () => {
+      // Light beginner bench press: 25kg 1RM
+      const baselines = parseInputBaselines({
+        benchPress: 25,
+      });
+
+      const flatBench = dbExercises.find((e) => e.name === 'Barbell Bench Press')!;
+      const weight = seedExerciseTargetWeight({
+        exercise: flatBench,
+        repRangeMin: 8,
+        repRangeMax: 12,
+        baselines,
+        gymProfile: commercialGymProfile,
+      });
+
+      // 25 / 1.3333 = 18.75kg, but an Olympic barbell alone weighs 20kg -> clamped to 20.0kg
+      expect(weight).toBe(20.0);
+    });
+
+    it('parses both array of objects and record input formats cleanly', () => {
+      const fromArray = parseInputBaselines([
+        { lift: 'benchPress', weightKg: 100, reps: 5 },
+        { name: 'Barbell Back Squat', weightKg: 140, reps: 3 },
+      ]);
+      expect(fromArray).toHaveLength(2);
+      expect(fromArray[0].benchmarkKey).toBe('bench_press');
+      // 100 * (1 + 5/30) = 116.7kg
+      expect(fromArray[0].estimated1rmKg).toBe(116.7);
+
+      const fromRecord = parseInputBaselines({
+        benchPress: 100,
+        squat: { weightKg: 140, reps: 5 },
+      });
+      expect(fromRecord).toHaveLength(2);
+      expect(fromRecord[0].benchmarkKey).toBe('bench_press');
+      expect(fromRecord[0].estimated1rmKg).toBe(100);
+      expect(fromRecord[1].benchmarkKey).toBe('squat');
+      expect(fromRecord[1].estimated1rmKg).toBe(163.3);
+    });
+
+    it('allows direct exercise match by UUID or name to seed exact lift targets', () => {
+      const legPress = dbExercises.find((e) => e.name === 'Leg Press')!;
+
+      const directBaselines = parseInputBaselines([
+        { exerciseId: legPress.id, weightKg: 200, reps: 10 },
+      ]);
+
+      const seededWeight = seedExerciseTargetWeight({
+        exercise: legPress,
+        repRangeMin: 10,
+        repRangeMax: 10,
+        baselines: directBaselines,
+        gymProfile: commercialGymProfile,
+      });
+
+      // 200 * (1 + 10/30) = 266.7 1RM -> at 10 reps (1.3333 divider) = 200kg
+      expect(seededWeight).toBe(200.0);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Part B: Fastify Route Integration & Auth Guards
   // -------------------------------------------------------------------------
   describe('Fastify Program & Routine API Routes', () => {
@@ -553,6 +935,30 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
         expect(body.data).toHaveProperty('id');
         expect(body.data.splitType).toBe('full_body');
         expect(body.data.routines).toHaveLength(1);
+      });
+
+      it('successfully accepts baselineLifts and generates program with seeded targetWeightKg', async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/v1/programs/generate',
+          headers: { authorization: `Bearer ${testToken}` },
+          payload: {
+            splitType: 'full_body',
+            trainingDaysPerWeek: 3,
+            goal: 'hypertrophy',
+            targetSessionDurationMinutes: 45,
+            baselineLifts: {
+              benchPress: 100,
+              squat: 140,
+              deadlift: 180,
+            },
+          },
+        });
+
+        expect(res.statusCode).toBe(201);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.routines[0].exercises[0].targetWeightKg).toBe(25.0);
       });
 
       it('rejects invalid generation payload (e.g. invalid days for split)', async () => {
@@ -802,6 +1208,91 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
         const body = res.json();
         expect(body.success).toBe(true);
         expect(body.data.exerciseId).toBe('00000000-0000-0000-0000-000000000005');
+      });
+    });
+
+    // 6. Smart Machine Swap Suggestions
+    describe('6. Smart Machine Swap Suggestions (GET /routines/:routineId/exercises/:id/alternatives)', () => {
+      it('returns up to 3 smart machine swap suggestions matching muscle and pattern', async () => {
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/routines/66666666-6666-6666-6666-666666666666/exercises/77777777-7777-7777-7777-777777777777/alternatives',
+          headers: { authorization: `Bearer ${testToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data).toHaveProperty('currentExercise');
+        expect(body.data.currentExercise.name).toBe('Barbell Flat Bench Press');
+        expect(body.data.alternatives).toBeInstanceOf(Array);
+        expect(body.data.alternatives.length).toBeLessThanOrEqual(3);
+        expect(body.data.totalFound).toBe(3);
+
+        const firstAlt = body.data.alternatives[0];
+        expect(firstAlt).toHaveProperty('id');
+        expect(firstAlt).toHaveProperty('name');
+        expect(firstAlt).toHaveProperty('primaryMuscleGroup');
+        expect(firstAlt).toHaveProperty('movementPattern');
+        expect(firstAlt).toHaveProperty('requiredEquipment');
+        expect(firstAlt).toHaveProperty('matchType');
+        expect(firstAlt).toHaveProperty('matchScore');
+        expect(firstAlt).toHaveProperty('swapPayload');
+        expect(firstAlt.swapPayload).toHaveProperty('replacementExerciseId');
+        expect(firstAlt.swapPayload).toHaveProperty('reason');
+      });
+
+      it('returns clear message and empty list when no suitable alternatives exist', async () => {
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/routines/66666666-6666-6666-6666-666666666666/exercises/88888888-8888-8888-8888-888888888888/alternatives',
+          headers: { authorization: `Bearer ${testToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.alternatives).toEqual([]);
+        expect(body.data.totalFound).toBe(0);
+        expect(body.data.message).toContain('No suitable replacement exercises found');
+      });
+
+      it('rejects unauthenticated request with 401 UNAUTHORIZED', async () => {
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/routines/66666666-6666-6666-6666-666666666666/exercises/77777777-7777-7777-7777-777777777777/alternatives',
+        });
+
+        expect(res.statusCode).toBe(401);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('UNAUTHORIZED');
+      });
+
+      it('returns 404 RESOURCE_NOT_FOUND when routine exercise does not exist or belong to user', async () => {
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/routines/66666666-6666-6666-6666-666666666666/exercises/00000000-0000-0000-0000-000000000000/alternatives',
+          headers: { authorization: `Bearer ${testToken}` },
+        });
+
+        expect(res.statusCode).toBe(404);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('RESOURCE_NOT_FOUND');
+      });
+
+      it('returns 400 VALIDATION_ERROR on invalid UUID format', async () => {
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/routines/invalid-uuid/exercises/not-a-uuid/alternatives',
+          headers: { authorization: `Bearer ${testToken}` },
+        });
+
+        expect(res.statusCode).toBe(400);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('VALIDATION_ERROR');
       });
     });
   });

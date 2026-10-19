@@ -90,6 +90,7 @@ export async function insertProgramWithPlan(
             prescribedSets: e.prescribedSets,
             repRangeMin: e.repRangeMin,
             repRangeMax: e.repRangeMax,
+            targetWeightKg: e.targetWeightKg ?? null,
             targetRpe: e.targetRpe,
             restSeconds: e.restSeconds,
             notes: e.notes,
@@ -517,4 +518,15 @@ export async function swapRoutineExerciseById(
     .returning();
 
   return updated ?? null;
+}
+
+export async function findRoutineExercisesByRoutineId(
+  routineId: string,
+  db = defaultDb,
+): Promise<RoutineExerciseRow[]> {
+  return await db
+    .select()
+    .from(routineExercises)
+    .where(eq(routineExercises.routineId, routineId))
+    .orderBy(asc(routineExercises.orderIndex), asc(routineExercises.createdAt));
 }

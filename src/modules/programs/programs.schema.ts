@@ -30,6 +30,33 @@ export const routineExerciseParamsSchema = z.object({
 export const splitTypeEnum = z.enum(['push_pull_legs', 'upper_lower', 'full_body']);
 export const programGoalEnum = z.enum(['strength', 'hypertrophy', 'endurance']);
 
+export const baselineLiftEntrySchema = z.object({
+  lift: z.string().optional(),
+  name: z.string().optional(),
+  exerciseId: z.string().uuid('Invalid exercise ID format').optional(),
+  weightKg: z.coerce.number().positive('Baseline weight must be positive').max(1000),
+  reps: z.coerce.number().int().positive().max(50).default(1),
+  estimated1rmKg: z.coerce.number().positive().max(1000).optional(),
+});
+
+export const baselineLiftsInputSchema = z
+  .union([
+    z.array(baselineLiftEntrySchema),
+    z.record(
+      z.string(),
+      z.union([
+        z.coerce.number().positive('Baseline weight must be positive').max(1000),
+        z.object({
+          weightKg: z.coerce.number().positive('Baseline weight must be positive').max(1000),
+          reps: z.coerce.number().int().positive().max(50).default(1),
+          estimated1rmKg: z.coerce.number().positive().max(1000).optional(),
+        }),
+      ]),
+    ),
+  ])
+  .nullable()
+  .optional();
+
 export const generateProgramSchema = z.object({
   name: z.string().trim().min(1).max(100).default('Personalized Workout Program'),
   splitType: splitTypeEnum,
@@ -38,8 +65,8 @@ export const generateProgramSchema = z.object({
   targetSessionDurationMinutes: z.coerce.number().int().min(20).max(120).default(45),
   gymProfileId: z.string().uuid('Invalid gym profile ID').nullable().optional(),
   goal: programGoalEnum.default('hypertrophy'),
+  baselineLifts: baselineLiftsInputSchema,
 });
-
 
 export type GenerateProgramInput = z.infer<typeof generateProgramSchema>;
 
@@ -138,6 +165,50 @@ export const swapRoutineExerciseSchema = z.object({
 
 export type SwapRoutineExerciseInput = z.infer<typeof swapRoutineExerciseSchema>;
 
+export interface SwapAlternativeExercise {
+  id: string;
+  name: string;
+  primaryMuscleGroup: string;
+  secondaryMuscleGroups: string[];
+  movementPattern: string;
+  requiredEquipment: string;
+  instructions: string | null;
+  matchType: 'exact_match' | 'movement_pattern_match' | 'muscle_group_match' | 'synergist_match';
+  matchScore: number;
+  matchReason: string;
+  swapPayload: {
+    replacementExerciseId: string;
+    reason: string;
+  };
+}
+
+export interface SmartSwapAlternativesResult {
+  routineId: string;
+  routineExerciseId: string;
+  currentExercise: {
+    id: string;
+    name: string;
+    primaryMuscleGroup: string;
+    secondaryMuscleGroups: string[];
+    movementPattern: string;
+    requiredEquipment: string;
+    prescribedSets: number;
+    repRangeMin: number;
+    repRangeMax: number;
+    targetWeightKg: number | null;
+    targetRpe: number | null;
+  };
+  gymProfile: {
+    id: string | null;
+    name: string | null;
+    environmentType: string | null;
+  } | null;
+  activeConstraintsCount: number;
+  alternatives: SwapAlternativeExercise[];
+  totalFound: number;
+  message?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Swagger UI Request Body JSON Schemas
 // ---------------------------------------------------------------------------
@@ -195,6 +266,17 @@ export const generateProgramBodySchema = {
       default: 'hypertrophy',
       description: 'Primary physiological adaptation target',
       example: 'hypertrophy',
+    },
+    baselineLifts: {
+      type: 'object',
+      description:
+        'Optional user baseline strength benchmark lifts (e.g. { "benchPress": 100, "squat": 140 }) or array of baseline lift objects',
+      example: {
+        benchPress: 100,
+        squat: 140,
+        deadlift: 180,
+        overheadPress: 60,
+      },
     },
   },
 };

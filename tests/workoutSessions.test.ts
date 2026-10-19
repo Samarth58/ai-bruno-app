@@ -234,6 +234,117 @@ vi.mock('../src/modules/sessions/sessions.service.js', async (importOriginal) =>
         },
       };
     }),
+    hitPrescribedTargetsSession: vi.fn(async (sessionId: string, userId: string, input: any) => {
+      if (sessionId !== '99999999-9999-9999-9999-999999999999' || userId !== mockUser.id) {
+        throw new actual.SessionResourceNotFoundError('Workout session not found');
+      }
+      if (input.notes === 'already-completed') {
+        throw new actual.SessionValidationError('Session is already completed and cannot be finished again.');
+      }
+      if (input.notes === 'freestyle-session') {
+        throw new actual.SessionValidationError(
+          'Cannot hit prescribed targets for a freestyle workout session without an assigned routine.',
+        );
+      }
+      if (input.notes === 'no-exercises-routine') {
+        throw new actual.SessionValidationError('Scheduled routine has no prescribed exercises.');
+      }
+      const isRetry = input.notes === 'retry-hit-prescribed';
+      const createdSetsCount = isRetry ? 0 : 3;
+
+      return {
+        session: {
+          id: sessionId,
+          userId,
+          routineId: '66666666-6666-6666-6666-666666666666',
+          status: 'completed',
+          completedAt: new Date(),
+          perceivedRpe: input.perceivedRpe ?? 8,
+          jointSoreness: input.jointSoreness ?? 1,
+          notes: input.notes ?? 'All prescribed targets completed',
+          hitPrescribedTargets: true,
+          routine: {
+            id: '66666666-6666-6666-6666-666666666666',
+            name: 'Push Day A',
+            dayNumber: 1,
+          },
+          setLogs: [
+            {
+              id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+              sessionId,
+              exerciseId: '44444444-4444-4444-4444-444444444444',
+              routineExerciseId: '77777777-7777-7777-7777-777777777777',
+              setNumber: 1,
+              targetWeightKg: 80,
+              targetReps: 10,
+              actualWeightKg: 80,
+              actualReps: 10,
+              rpe: 8,
+              isWarmup: false,
+              targetHit: true,
+              exercise: {
+                id: '44444444-4444-4444-4444-444444444444',
+                name: 'Dumbbell Bench Press',
+                primaryMuscleGroup: 'chest',
+                movementPattern: 'horizontal_push',
+                requiredEquipment: 'dumbbell',
+              },
+            },
+            {
+              id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+              sessionId,
+              exerciseId: '44444444-4444-4444-4444-444444444444',
+              routineExerciseId: '77777777-7777-7777-7777-777777777777',
+              setNumber: 2,
+              targetWeightKg: 80,
+              targetReps: 10,
+              actualWeightKg: 80,
+              actualReps: 10,
+              rpe: 8,
+              isWarmup: false,
+              targetHit: true,
+              exercise: {
+                id: '44444444-4444-4444-4444-444444444444',
+                name: 'Dumbbell Bench Press',
+                primaryMuscleGroup: 'chest',
+                movementPattern: 'horizontal_push',
+                requiredEquipment: 'dumbbell',
+              },
+            },
+            {
+              id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+              sessionId,
+              exerciseId: '44444444-4444-4444-4444-444444444444',
+              routineExerciseId: '77777777-7777-7777-7777-777777777777',
+              setNumber: 3,
+              targetWeightKg: 80,
+              targetReps: 10,
+              actualWeightKg: 80,
+              actualReps: 10,
+              rpe: 8,
+              isWarmup: false,
+              targetHit: true,
+              exercise: {
+                id: '44444444-4444-4444-4444-444444444444',
+                name: 'Dumbbell Bench Press',
+                primaryMuscleGroup: 'chest',
+                movementPattern: 'horizontal_push',
+                requiredEquipment: 'dumbbell',
+              },
+            },
+          ],
+        },
+        summary: {
+          durationSeconds: 2700,
+          durationMinutes: 45,
+          totalVolumeKg: 2400,
+          totalSets: 3,
+          workingSets: 3,
+          hitPrescribedTargets: true,
+        },
+        createdSetsCount,
+      };
+    }),
     cancelWorkoutSession: vi.fn(async (sessionId: string, userId: string, input: any) => {
       if (sessionId !== '99999999-9999-9999-9999-999999999999' || userId !== mockUser.id) {
         throw new actual.SessionResourceNotFoundError('Workout session not found');
@@ -448,6 +559,7 @@ describe('Bruno AI Gym Buddy — Phase 4: Workout Sessions & Set Logging Suite',
         },
         { method: 'DELETE', url: `/api/v1/sessions/${sessionId}/sets/${setId}` },
         { method: 'POST', url: `/api/v1/sessions/${sessionId}/finish`, payload: {} },
+        { method: 'POST', url: `/api/v1/sessions/${sessionId}/hit-prescribed`, payload: {} },
         { method: 'POST', url: `/api/v1/sessions/${sessionId}/cancel`, payload: {} },
         { method: 'GET', url: '/api/v1/sessions' },
         { method: 'GET', url: `/api/v1/sessions/${sessionId}` },
@@ -688,6 +800,126 @@ describe('Bruno AI Gym Buddy — Phase 4: Workout Sessions & Set Logging Suite',
         const body = res.json();
         expect(body.success).toBe(true);
         expect(body.data.session.status).toBe('abandoned');
+      });
+    });
+
+    // 4b. One-Tap Hit Prescribed Targets Workout Logging
+    describe('4b. One-Tap Hit Prescribed Targets Logging (POST /sessions/:sessionId/hit-prescribed)', () => {
+      it('successfully auto-logs prescribed sets and completes session in one tap', async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/sessions/${sessionId}/hit-prescribed`,
+          headers: { authorization: `Bearer ${testToken}` },
+          payload: {
+            perceivedRpe: 8,
+            jointSoreness: 1,
+            notes: 'Hit all prescribed reps with textbook form',
+          },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.session.status).toBe('completed');
+        expect(body.data.session.hitPrescribedTargets).toBe(true);
+        expect(body.data.summary.hitPrescribedTargets).toBe(true);
+        expect(body.data.createdSetsCount).toBe(3);
+        expect(body.data.session.setLogs).toHaveLength(3);
+        expect(body.data.session.setLogs[0].targetHit).toBe(true);
+      });
+
+      it('safely handles idempotency on retry without creating duplicate set logs', async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/sessions/${sessionId}/hit-prescribed`,
+          headers: { authorization: `Bearer ${testToken}` },
+          payload: {
+            notes: 'retry-hit-prescribed',
+          },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.createdSetsCount).toBe(0);
+        expect(body.data.session.hitPrescribedTargets).toBe(true);
+      });
+
+      it('rejects hitting prescribed targets for freestyle sessions without a routine', async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/sessions/${sessionId}/hit-prescribed`,
+          headers: { authorization: `Bearer ${testToken}` },
+          payload: {
+            notes: 'freestyle-session',
+          },
+        });
+
+        expect(res.statusCode).toBe(400);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('VALIDATION_ERROR');
+        expect(body.error.message).toContain('freestyle');
+      });
+
+      it('rejects hitting prescribed targets on an already finished session', async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/sessions/${sessionId}/hit-prescribed`,
+          headers: { authorization: `Bearer ${testToken}` },
+          payload: {
+            notes: 'already-completed',
+          },
+        });
+
+        expect(res.statusCode).toBe(400);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('rejects hitting prescribed targets for unowned session with 404 RESOURCE_NOT_FOUND', async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/sessions/${sessionId}/hit-prescribed`,
+          headers: { authorization: `Bearer ${otherUserToken}` },
+          payload: {},
+        });
+
+        expect(res.statusCode).toBe(404);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('RESOURCE_NOT_FOUND');
+      });
+
+      it('rejects invalid session UUID format with 400 VALIDATION_ERROR', async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/v1/sessions/not-a-uuid/hit-prescribed',
+          headers: { authorization: `Bearer ${testToken}` },
+          payload: {},
+        });
+
+        expect(res.statusCode).toBe(400);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('rejects invalid RPE score (>10) with 400 VALIDATION_ERROR', async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/sessions/${sessionId}/hit-prescribed`,
+          headers: { authorization: `Bearer ${testToken}` },
+          payload: {
+            perceivedRpe: 15,
+          },
+        });
+
+        expect(res.statusCode).toBe(400);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('VALIDATION_ERROR');
       });
     });
 

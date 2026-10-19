@@ -19,6 +19,7 @@ import { MockAiProvider } from '../src/ai/providers/mock.provider.js';
 import { OpenAiProvider } from '../src/ai/providers/openai.provider.js';
 import { signAccessToken } from '../src/auth/jwt.js';
 import { curatedExercises } from '../src/db/seeds/exercises.js';
+import * as coachService from '../src/modules/coach/coach.service.js';
 import {
   detectAcuteMedicalRedFlags,
   findWorkoutSessionById,
@@ -1057,6 +1058,322 @@ describe('Bruno AI Gym Buddy — AI Integration & Coach Suite', () => {
       expect(endpoint.tags).toContain('AI Coach');
       expect(endpoint.summary).toContain('Bruno AI Coach');
       expect(endpoint.security).toEqual([{ bearerAuth: [] }]);
+    });
+  });
+
+  // =========================================================================
+  // 6. Proactive Coaching & Mascot State Endpoints
+  // =========================================================================
+  describe('Proactive Coaching & Mascot State Endpoints', () => {
+    describe('GET /api/v1/coach/briefing', () => {
+      it('rejects unauthenticated request with 401 UNAUTHORIZED', async () => {
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/briefing',
+        });
+
+        expect(res.statusCode).toBe(401);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('UNAUTHORIZED');
+      });
+
+      it('returns today planned workout, previous session metrics, and tailored coaching tip', async () => {
+        vi.spyOn(coachService, 'getPreSessionBriefing').mockResolvedValueOnce({
+          hasScheduledRoutine: true,
+          activeProgramName: 'Push Pull Legs Hypertrophy',
+          todayWorkout: {
+            routineId: '44444444-4444-4444-4444-444444444444',
+            routineName: 'Push Day A',
+            dayNumber: 1,
+            targetRpe: 8.0,
+            description: 'Chest, front delts, and triceps focus',
+            prescribedExercisesCount: 3,
+            exercises: [
+              {
+                id: 're-1',
+                exerciseId: 'ex-1',
+                name: 'Dumbbell Bench Press',
+                primaryMuscleGroup: 'chest',
+                movementPattern: 'horizontal_push',
+                prescribedSets: 3,
+                repRangeMin: 8,
+                repRangeMax: 10,
+                targetWeightKg: 24,
+                targetRpe: 8.0,
+              },
+            ],
+          },
+          previousSession: {
+            sessionId: 'prev-session-1',
+            routineName: 'Leg Day',
+            completedAt: '2026-10-18T18:00:00.000Z',
+            durationMinutes: 50,
+            totalVolumeKg: 3200,
+            workingSets: 12,
+            perceivedRpe: 8.5,
+            hitPrescribedTargets: true,
+          },
+          readinessScore: 88,
+          fatigueLevel: 'low',
+          coachingTip:
+            'High readiness detected (88/100)! Attack your Push Day A compound movements with confidence.',
+        });
+
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/briefing',
+          headers: { authorization: `Bearer ${validToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.hasScheduledRoutine).toBe(true);
+        expect(body.data.todayWorkout.routineName).toBe('Push Day A');
+        expect(body.data.previousSession.sessionId).toBe('prev-session-1');
+        expect(body.data.readinessScore).toBe(88);
+        expect(body.data.coachingTip).toContain('Push Day A');
+      });
+
+      it('handles new lifters with no active routine or previous history gracefully', async () => {
+        vi.spyOn(coachService, 'getPreSessionBriefing').mockResolvedValueOnce({
+          hasScheduledRoutine: false,
+          activeProgramName: null,
+          todayWorkout: null,
+          previousSession: null,
+          readinessScore: 100,
+          fatigueLevel: 'low',
+          coachingTip:
+            'Welcome to Bruno! Focus on mastering movement form and establishing your baseline loads today.',
+        });
+
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/briefing',
+          headers: { authorization: `Bearer ${validToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.hasScheduledRoutine).toBe(false);
+        expect(body.data.todayWorkout).toBeNull();
+        expect(body.data.previousSession).toBeNull();
+        expect(body.data.coachingTip).toContain('Welcome to Bruno');
+      });
+    });
+
+    describe('GET /api/v1/coach/weekly-review', () => {
+      it('rejects unauthenticated request with 401 UNAUTHORIZED', async () => {
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/weekly-review',
+        });
+
+        expect(res.statusCode).toBe(401);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('UNAUTHORIZED');
+      });
+
+      it('returns current week completed volume, working sets, adherence, and verdict', async () => {
+        vi.spyOn(coachService, 'getWeeklyReview').mockResolvedValueOnce({
+          weekStartDate: '2026-10-19T00:00:00.000Z',
+          weekEndDate: '2026-10-25T23:59:59.999Z',
+          completedWorkouts: 4,
+          targetWorkouts: 4,
+          adherencePercentage: 100,
+          totalWorkingSets: 42,
+          totalVolumeKg: 16800.5,
+          totalDurationMinutes: 195,
+          currentStreakWeeks: 3,
+          verdict: 'target_achieved',
+          feedback:
+            'Sensational work! You hit your weekly target of 4 workouts with 16,800.5 kg moved.',
+          muscleGroupBreakdown: [
+            {
+              muscleGroup: 'chest',
+              workingSetsCount: 14,
+              totalVolumeKg: 5600,
+              exerciseCount: 2,
+            },
+          ],
+        });
+
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/weekly-review',
+          headers: { authorization: `Bearer ${validToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.completedWorkouts).toBe(4);
+        expect(body.data.adherencePercentage).toBe(100);
+        expect(body.data.verdict).toBe('target_achieved');
+        expect(body.data.muscleGroupBreakdown).toHaveLength(1);
+      });
+
+      it('handles empty week history gracefully with needs_momentum verdict', async () => {
+        vi.spyOn(coachService, 'getWeeklyReview').mockResolvedValueOnce({
+          weekStartDate: '2026-10-19T00:00:00.000Z',
+          weekEndDate: '2026-10-25T23:59:59.999Z',
+          completedWorkouts: 0,
+          targetWorkouts: 4,
+          adherencePercentage: 0,
+          totalWorkingSets: 0,
+          totalVolumeKg: 0,
+          totalDurationMinutes: 0,
+          currentStreakWeeks: 0,
+          verdict: 'needs_momentum',
+          feedback:
+            'No workouts logged this week yet. Bruno is ready when you are—get that first session in to build momentum!',
+          muscleGroupBreakdown: [],
+        });
+
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/weekly-review',
+          headers: { authorization: `Bearer ${validToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.completedWorkouts).toBe(0);
+        expect(body.data.verdict).toBe('needs_momentum');
+        expect(body.data.feedback).toContain('first session');
+      });
+    });
+
+    describe('GET /api/v1/coach/mascot-state', () => {
+      it('rejects unauthenticated request with 401 UNAUTHORIZED', async () => {
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/mascot-state',
+        });
+
+        expect(res.statusCode).toBe(401);
+        const body = res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('UNAUTHORIZED');
+      });
+
+      it('returns approving_nod state for consistent lifters', async () => {
+        vi.spyOn(coachService, 'getMascotState').mockResolvedValueOnce({
+          visualState: 'approving_nod',
+          headline: 'Bruno nods with pride',
+          subtext:
+            'Tremendous consistency! Your disciplined training habit is driving real progress.',
+          mood: 'proud',
+          context: {
+            daysSinceLastWorkout: 1,
+            currentStreakWeeks: 2,
+            weeklyWorkoutsCompleted: 3,
+            weeklyWorkoutsTarget: 4,
+            readinessScore: 85,
+          },
+        });
+
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/mascot-state',
+          headers: { authorization: `Bearer ${validToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.visualState).toBe('approving_nod');
+        expect(body.data.mood).toBe('proud');
+        expect(body.data.context.daysSinceLastWorkout).toBe(1);
+      });
+
+      it('returns waiting_with_watch state when lifter is inactive for 3+ days', async () => {
+        vi.spyOn(coachService, 'getMascotState').mockResolvedValueOnce({
+          visualState: 'waiting_with_watch',
+          headline: 'Bruno is tapping his watch',
+          subtext: "It's been 4 days since your last workout. The iron is calling!",
+          mood: 'impatient',
+          context: {
+            daysSinceLastWorkout: 4,
+            currentStreakWeeks: 0,
+            weeklyWorkoutsCompleted: 0,
+            weeklyWorkoutsTarget: 4,
+            readinessScore: 92,
+          },
+        });
+
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/mascot-state',
+          headers: { authorization: `Bearer ${validToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.visualState).toBe('waiting_with_watch');
+        expect(body.data.mood).toBe('impatient');
+        expect(body.data.headline).toContain('watch');
+      });
+
+      it('returns studying_journal state when fatigue is high or lifter is recovering', async () => {
+        vi.spyOn(coachService, 'getMascotState').mockResolvedValueOnce({
+          visualState: 'studying_journal',
+          headline: 'Bruno is reviewing your recovery data',
+          subtext:
+            'Elevated systemic fatigue or joint soreness detected. Prioritize recovery and sleep today.',
+          mood: 'analytical',
+          context: {
+            daysSinceLastWorkout: 1,
+            currentStreakWeeks: 2,
+            weeklyWorkoutsCompleted: 3,
+            weeklyWorkoutsTarget: 4,
+            readinessScore: 45,
+          },
+        });
+
+        const res = await app.inject({
+          method: 'GET',
+          url: '/api/v1/coach/mascot-state',
+          headers: { authorization: `Bearer ${validToken}` },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.visualState).toBe('studying_journal');
+        expect(body.data.mood).toBe('analytical');
+        expect(body.data.headline).toContain('recovery');
+      });
+    });
+
+    describe('OpenAPI Swagger Documentation', () => {
+      it('documents all three new coach endpoints under AI Coach tag', async () => {
+        await app.ready();
+        const openapi = app.swagger() as any;
+
+        const briefingEp = openapi.paths?.['/api/v1/coach/briefing']?.get;
+        expect(briefingEp).toBeDefined();
+        expect(briefingEp.tags).toContain('AI Coach');
+        expect(briefingEp.summary).toContain('briefing');
+        expect(briefingEp.security).toEqual([{ bearerAuth: [] }]);
+
+        const weeklyEp = openapi.paths?.['/api/v1/coach/weekly-review']?.get;
+        expect(weeklyEp).toBeDefined();
+        expect(weeklyEp.tags).toContain('AI Coach');
+        expect(weeklyEp.summary).toContain('weekly');
+        expect(weeklyEp.security).toEqual([{ bearerAuth: [] }]);
+
+        const mascotEp = openapi.paths?.['/api/v1/coach/mascot-state']?.get;
+        expect(mascotEp).toBeDefined();
+        expect(mascotEp.tags).toContain('AI Coach');
+        expect(mascotEp.summary).toContain('mascot');
+        expect(mascotEp.security).toEqual([{ bearerAuth: [] }]);
+      });
     });
   });
 });

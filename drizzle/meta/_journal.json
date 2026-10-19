@@ -50,6 +50,13 @@
       "when": 1792422983243,
       "tag": "0006_pale_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792426789880,
+      "tag": "0007_fat_forgotten_one",
+      "breakpoints": true
     }
   ]
 }

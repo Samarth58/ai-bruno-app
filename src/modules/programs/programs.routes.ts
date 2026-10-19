@@ -34,6 +34,7 @@ import {
   listUserPrograms,
   ProgramResourceNotFoundError,
   ProgramValidationError,
+  getSmartSwapAlternatives,
   swapRoutineExercise,
   updateRoutine,
   updateRoutineExercise,
@@ -506,7 +507,65 @@ export async function programsRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // 14. POST /routines/:routineId/exercises/:id/swap
+  // 14. GET /routines/:routineId/exercises/:id/alternatives
+  app.get(
+    '/routines/:routineId/exercises/:id/alternatives',
+    {
+      schema: {
+        tags: ['Workout Programs'],
+        summary: 'Get smart machine swap suggestions',
+        description:
+          'Returns up to 3 biomechanically sound replacement exercises for a routine exercise when gym equipment is busy or occupied. Strictly filters by user gym profile equipment and active injury constraints.',
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['routineId', 'id'],
+          properties: {
+            routineId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Scheduled routine UUID',
+            },
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Prescribed routine exercise UUID to be replaced',
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const paramParsed = routineExerciseParamsSchema.safeParse(request.params);
+      if (!paramParsed.success) {
+        return reply
+          .status(400)
+          .send(fail('VALIDATION_ERROR', 'Invalid parameters', paramParsed.error.issues));
+      }
+
+      try {
+        const result = await getSmartSwapAlternatives(
+          paramParsed.data.routineId,
+          paramParsed.data.id,
+          request.userId!,
+        );
+        return reply.status(200).send(ok(result));
+      } catch (err: unknown) {
+        if (err instanceof ProgramResourceNotFoundError) {
+          return reply.status(404).send(fail('RESOURCE_NOT_FOUND', err.message));
+        }
+        if (err instanceof ProgramValidationError) {
+          return reply.status(400).send(fail('VALIDATION_ERROR', err.message));
+        }
+        request.log.error(err, 'Failed to get smart swap alternatives');
+        return reply
+          .status(500)
+          .send(fail('INTERNAL_SERVER_ERROR', 'Failed to get swap alternatives'));
+      }
+    },
+  );
+
+  // 15. POST /routines/:routineId/exercises/:id/swap
   app.post(
     '/routines/:routineId/exercises/:id/swap',
     {

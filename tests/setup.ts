@@ -36,6 +36,7 @@ beforeEach(async () => {
     'exercises',
     'examples',
     'categories',
+    'password_reset_challenges',
     'user_sessions',
     'users',
   ];

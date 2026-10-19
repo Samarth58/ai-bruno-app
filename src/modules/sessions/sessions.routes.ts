@@ -6,6 +6,8 @@ import {
   cancelSessionSchema,
   finishSessionBodySchema,
   finishSessionSchema,
+  hitPrescribedSessionBodySchema,
+  hitPrescribedSessionSchema,
   listSessionsQuerySchema,
   logSetBodySchema,
   logSetSchema,
@@ -22,6 +24,7 @@ import {
   finishWorkoutSession,
   getActiveWorkoutSession,
   getUserSessionById,
+  hitPrescribedTargetsSession,
   listUserSessions,
   logExerciseSet,
   SessionConflictError,
@@ -280,7 +283,60 @@ export async function sessionsRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // 7. POST /sessions/:sessionId/cancel
+  // 7. POST /sessions/:sessionId/hit-prescribed
+  app.post(
+    '/sessions/:sessionId/hit-prescribed',
+    {
+      schema: {
+        tags: ['Workout Sessions'],
+        summary: 'One-tap finish session hitting all prescribed targets',
+        description:
+          'Automatically creates completed set logs for all prescribed exercises and sets in the scheduled routine using target weights and reps, marks the session completed, and computes duration and volume metrics.',
+        security: [{ bearerAuth: [] }],
+        body: hitPrescribedSessionBodySchema,
+      },
+    },
+    async (request, reply) => {
+      const paramParsed = sessionIdParamSchema.safeParse(request.params);
+      if (!paramParsed.success) {
+        return reply
+          .status(400)
+          .send(fail('VALIDATION_ERROR', 'Invalid session ID', paramParsed.error.issues));
+      }
+
+      const bodyParsed = hitPrescribedSessionSchema.safeParse(request.body ?? {});
+      if (!bodyParsed.success) {
+        return reply
+          .status(400)
+          .send(fail('VALIDATION_ERROR', 'Invalid hit-prescribed parameters', bodyParsed.error.issues));
+      }
+
+      try {
+        const result = await hitPrescribedTargetsSession(
+          paramParsed.data.sessionId,
+          request.userId!,
+          bodyParsed.data,
+        );
+        return reply.status(200).send(ok(result));
+      } catch (err: unknown) {
+        if (err instanceof SessionResourceNotFoundError) {
+          return reply.status(404).send(fail('RESOURCE_NOT_FOUND', err.message));
+        }
+        if (err instanceof SessionValidationError) {
+          return reply.status(400).send(fail('VALIDATION_ERROR', err.message));
+        }
+        if (err instanceof SessionConflictError) {
+          return reply.status(409).send(fail('CONFLICT', err.message));
+        }
+        request.log.error(err, 'Failed to hit prescribed targets for session');
+        return reply
+          .status(500)
+          .send(fail('INTERNAL_SERVER_ERROR', 'Failed to hit prescribed targets'));
+      }
+    },
+  );
+
+  // 8. POST /sessions/:sessionId/cancel
   app.post(
     '/sessions/:sessionId/cancel',
     {
@@ -328,7 +384,7 @@ export async function sessionsRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // 8. GET /sessions
+  // 9. GET /sessions
   app.get(
     '/sessions',
     {
@@ -353,7 +409,7 @@ export async function sessionsRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // 9. GET /sessions/:sessionId
+  // 10. GET /sessions/:sessionId
   app.get(
     '/sessions/:sessionId',
     {

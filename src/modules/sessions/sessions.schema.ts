@@ -91,6 +91,26 @@ export const finishSessionSchema = z.object({
 
 export type FinishSessionInput = z.infer<typeof finishSessionSchema>;
 
+export const hitPrescribedSessionSchema = z.object({
+  perceivedRpe: z.coerce
+    .number()
+    .min(1, 'Perceived RPE minimum is 1')
+    .max(10, 'Perceived RPE maximum is 10')
+    .nullable()
+    .optional(),
+  jointSoreness: z.coerce
+    .number()
+    .int()
+    .min(0, 'Joint soreness minimum is 0')
+    .max(10, 'Joint soreness maximum is 10')
+    .nullable()
+    .optional(),
+  notes: z.string().trim().max(1000, 'Notes cannot exceed 1000 characters').optional(),
+  completedAt: z.string().datetime({ message: 'completedAt must be a valid ISO 8601 string' }).optional(),
+});
+
+export type HitPrescribedSessionInput = z.infer<typeof hitPrescribedSessionSchema>;
+
 export const cancelSessionSchema = z.object({
   notes: z.string().trim().max(500, 'Cancellation notes cannot exceed 500 characters').optional(),
 });
@@ -283,6 +303,40 @@ export const finishSessionBodySchema = {
       maxLength: 1000,
       description: 'Post-workout cooldown notes, pump rating, or energy reflections',
       example: 'Great chest connection today. Felt strong on incline dumbell bench.',
+    },
+    completedAt: {
+      type: 'string',
+      format: 'date-time',
+      description: 'Custom completion timestamp (defaults to current server time)',
+      example: '2026-10-19T21:30:00.000Z',
+    },
+  },
+};
+
+export const hitPrescribedSessionBodySchema = {
+  type: 'object',
+  properties: {
+    perceivedRpe: {
+      type: 'number',
+      minimum: 1,
+      maximum: 10,
+      nullable: true,
+      description: 'Overall session Rate of Perceived Exertion (1-10)',
+      example: 8.0,
+    },
+    jointSoreness: {
+      type: 'integer',
+      minimum: 0,
+      maximum: 10,
+      nullable: true,
+      description: 'Subjective joint tenderness score (0=none, 10=severe)',
+      example: 1,
+    },
+    notes: {
+      type: 'string',
+      maxLength: 1000,
+      description: 'Post-workout cooldown notes, pump rating, or energy reflections',
+      example: 'Hit all prescribed sets and reps with textbook form.',
     },
     completedAt: {
       type: 'string',

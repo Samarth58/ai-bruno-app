@@ -1,3 +1,11 @@
+import { and, asc, eq, isNull } from 'drizzle-orm';
+import { db } from '../../db/connection.js';
+import {
+  routineExercises,
+  workoutRoutines,
+  workoutSessions,
+  workoutSetLogs,
+} from '../../db/schema.js';
 import { findExerciseById } from '../exercises/exercises.repository.js';
 import { findRoutineByIdWithOwnership } from '../programs/programs.repository.js';
 import {
@@ -16,6 +24,7 @@ import {
 import type {
   CancelSessionInput,
   FinishSessionInput,
+  HitPrescribedSessionInput,
   ListSessionsQuery,
   LogSetInput,
   StartSessionInput,
@@ -334,6 +343,171 @@ export async function finishWorkoutSession(
   return {
     session: finalDetail,
     summary,
+  };
+}
+
+/**
+ * Completes an in-progress workout session in one tap by automatically generating
+ * completed set logs for all prescribed exercises and sets in the scheduled routine.
+ *
+ * Requirements & Safety:
+ * 1. Transactional isolation ensures no partial set creation on error.
+ * 2. Row-level exclusive lock on the session prevents duplicate concurrent set creations.
+ * 3. Idempotent set generation checks for existing set logs in the session before inserting,
+ *    preventing duplicate sets if retried or if some sets were already logged.
+ * 4. Missing target weights safely record null target weight and 0 kg actual weight (bodyweight/unweighted).
+ *    Never invents fictitious weights. Prescribed target values are cleanly separated from actual results.
+ * 5. Session is finalized with hitPrescribedTargets: true, status: 'completed', and duration/volume metrics computed.
+ */
+export async function hitPrescribedTargetsSession(
+  sessionId: string,
+  userId: string,
+  input: HitPrescribedSessionInput = {},
+): Promise<{
+  session: PopulatedSessionDetail;
+  summary: SessionMetricsSummary;
+  createdSetsCount: number;
+}> {
+  const completedAt = input.completedAt ? new Date(input.completedAt) : new Date();
+
+  const { createdSetsCount } = await db.transaction(async (tx) => {
+    // 1. Fetch and lock session row for exclusive transaction access
+    const [session] = await tx
+      .select()
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.id, sessionId),
+          eq(workoutSessions.userId, userId),
+          isNull(workoutSessions.deletedAt),
+        ),
+      )
+      .for('update');
+
+    if (!session) {
+      throw new SessionResourceNotFoundError('Workout session not found');
+    }
+
+    // 2. Validate session is still active
+    if (session.status !== 'in_progress') {
+      throw new SessionValidationError(
+        `Session is already ${session.status} and cannot be finished again.`,
+      );
+    }
+
+    // 3. Validate routine attachment (freestyle sessions have no prescribed targets)
+    if (!session.routineId) {
+      throw new SessionValidationError(
+        'Cannot hit prescribed targets for a freestyle workout session without an assigned routine.',
+      );
+    }
+
+    // 4. Fetch the scheduled routine
+    const [routine] = await tx
+      .select()
+      .from(workoutRoutines)
+      .where(
+        and(
+          eq(workoutRoutines.id, session.routineId),
+          isNull(workoutRoutines.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!routine) {
+      throw new SessionResourceNotFoundError('Scheduled workout routine not found');
+    }
+
+    // 5. Fetch prescribed exercises in planned sequence
+    const prescribed = await tx
+      .select()
+      .from(routineExercises)
+      .where(eq(routineExercises.routineId, routine.id))
+      .orderBy(asc(routineExercises.orderIndex), asc(routineExercises.createdAt));
+
+    if (prescribed.length === 0) {
+      throw new SessionValidationError('Scheduled routine has no prescribed exercises.');
+    }
+
+    // 6. Check existing set logs for this session to avoid duplicate logs on retry
+    const existingSets = await tx
+      .select()
+      .from(workoutSetLogs)
+      .where(eq(workoutSetLogs.sessionId, session.id));
+
+    // 7. Auto-populate missing prescribed sets
+    const setsToInsert: Array<typeof workoutSetLogs.$inferInsert> = [];
+
+    for (const rx of prescribed) {
+      const prescribedSets = rx.prescribedSets > 0 ? rx.prescribedSets : 3;
+      const targetReps = rx.repRangeMax ?? rx.repRangeMin ?? 10;
+      const targetWeightKg =
+        rx.targetWeightKg !== null && rx.targetWeightKg !== undefined
+          ? Number(rx.targetWeightKg)
+          : null;
+      // Handle missing target weights safely: never invent actual weights.
+      // 0 kg represents unweighted / bodyweight, matching non-null database column constraint.
+      const actualWeightKg = targetWeightKg !== null ? targetWeightKg : 0;
+      const setRpe = rx.targetRpe ?? input.perceivedRpe ?? null;
+
+      for (let setNum = 1; setNum <= prescribedSets; setNum++) {
+        const alreadyExists = existingSets.some(
+          (s) =>
+            (s.routineExerciseId === rx.id || s.exerciseId === rx.exerciseId) &&
+            s.setNumber === setNum,
+        );
+
+        if (!alreadyExists) {
+          setsToInsert.push({
+            sessionId: session.id,
+            exerciseId: rx.exerciseId,
+            routineExerciseId: rx.id,
+            setNumber: setNum,
+            actualWeightKg,
+            actualReps: targetReps,
+            targetWeightKg,
+            targetReps,
+            rpe: setRpe,
+            targetHit: true,
+            isWarmup: false,
+          });
+        }
+      }
+    }
+
+    if (setsToInsert.length > 0) {
+      await tx.insert(workoutSetLogs).values(setsToInsert);
+    }
+
+    // 8. Update session header to completed
+    await tx
+      .update(workoutSessions)
+      .set({
+        status: 'completed',
+        completedAt,
+        perceivedRpe: input.perceivedRpe ?? session.perceivedRpe ?? routine.targetRpe ?? null,
+        jointSoreness: input.jointSoreness ?? session.jointSoreness ?? null,
+        notes: input.notes ?? session.notes ?? null,
+        hitPrescribedTargets: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(workoutSessions.id, session.id));
+
+    return { createdSetsCount: setsToInsert.length };
+  });
+
+  // 9. Retrieve finalized populated session detail and compute duration/volume summary
+  const finalDetail = await findSessionByIdAndUserId(sessionId, userId);
+  if (!finalDetail) {
+    throw new SessionResourceNotFoundError('Failed to retrieve finalized workout session');
+  }
+
+  const summary = computeSessionMetrics(finalDetail, finalDetail.setLogs);
+
+  return {
+    session: finalDetail,
+    summary,
+    createdSetsCount,
   };
 }
 

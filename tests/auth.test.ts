@@ -1,11 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
+import { signAccessToken } from '../src/auth/jwt.js';
+import { hashPassword } from '../src/auth/password.js';
+import { createSession } from '../src/auth/sessionService.js';
+import { db } from '../src/db/connection.js';
+import { users } from '../src/db/schema.js';
 
 const app = buildApp();
 const password = 'password123';
 
 const uniqueEmail = () =>
   `test-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+
+async function createAuthTestUser(customEmail?: string, customPassword = password) {
+  const email = customEmail ?? uniqueEmail();
+  const passwordHash = await hashPassword(customPassword);
+  const [user] = await db
+    .insert(users)
+    .values({ email, passwordHash, name: 'Test User', role: 'user' })
+    .returning();
+  const token = signAccessToken(user.id);
+  const { refreshToken } = await createSession(user.id);
+  return { user, email, token, refreshToken, password: customPassword };
+}
 
 describe('POST /register', () => {
   it('registers a user without name', async () => {
@@ -187,3 +204,139 @@ describe('POST /login', () => {
     expect(body.error.code).toBe('UNAUTHORIZED');
   });
 });
+
+describe('POST /api/v1/auth/change-password', () => {
+  it('changes password successfully for authenticated user', async () => {
+    const { email, token, refreshToken } = await createAuthTestUser();
+
+    const newPassword = 'newPassword456!';
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/change-password',
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      payload: {
+        currentPassword: password,
+        newPassword,
+        confirmPassword: newPassword,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveProperty('message');
+    expect(body.data.message).toContain('Password changed successfully');
+
+    // Verify old password cannot log in
+    const oldLogin = await app.inject({
+      method: 'POST',
+      url: '/login',
+      payload: { email, password },
+    });
+    expect(oldLogin.statusCode).toBe(401);
+
+    // Verify new password logs in successfully
+    const newLogin = await app.inject({
+      method: 'POST',
+      url: '/login',
+      payload: { email, password: newPassword },
+    });
+    expect(newLogin.statusCode).toBe(200);
+
+    // Verify previous refresh token was revoked
+    const refreshRes = await app.inject({
+      method: 'POST',
+      url: '/refresh',
+      payload: { refreshToken },
+    });
+    expect(refreshRes.statusCode).toBe(401);
+  });
+
+  it('rejects change-password without Authorization header with 401 UNAUTHORIZED', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/change-password',
+      payload: {
+        currentPassword: password,
+        newPassword: 'newPassword456!',
+        confirmPassword: 'newPassword456!',
+      },
+    });
+
+    expect(res.statusCode).toBe(401);
+    const body = res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('rejects incorrect current password with 400 VALIDATION_ERROR', async () => {
+    const { token } = await createAuthTestUser();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/change-password',
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      payload: {
+        currentPassword: 'wrong-current-password',
+        newPassword: 'newPassword456!',
+        confirmPassword: 'newPassword456!',
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.message).toBe('Incorrect current password');
+  });
+
+  it('rejects mismatched newPassword and confirmPassword with 400 VALIDATION_ERROR', async () => {
+    const { token } = await createAuthTestUser();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/change-password',
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      payload: {
+        currentPassword: password,
+        newPassword: 'newPassword456!',
+        confirmPassword: 'differentPassword789!',
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(JSON.stringify(body.error)).toContain('Passwords do not match');
+  });
+
+  it('rejects short newPassword (< 8 chars) with 400 VALIDATION_ERROR', async () => {
+    const { token } = await createAuthTestUser();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/change-password',
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      payload: {
+        currentPassword: password,
+        newPassword: 'short',
+        confirmPassword: 'short',
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+

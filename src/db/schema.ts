@@ -53,6 +53,44 @@ export const userSessions = pgTable(
   ],
 );
 
+export const passwordResetChallenges = pgTable(
+  'password_reset_challenges',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    otpHash: text('otp_hash').notNull(),
+    otpExpiresAt: timestamp('otp_expires_at', { withTimezone: true }).notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(5),
+    resendCooldownExpiresAt: timestamp('resend_cooldown_expires_at', {
+      withTimezone: true,
+    }).notNull(),
+    otpVerifiedAt: timestamp('otp_verified_at', { withTimezone: true }),
+    resetTokenHash: text('reset_token_hash'),
+    resetTokenExpiresAt: timestamp('reset_token_expires_at', {
+      withTimezone: true,
+    }),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    supersededAt: timestamp('superseded_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (table) => [
+    index('password_reset_challenges_user_id_idx').on(table.userId),
+    index('password_reset_challenges_email_idx').on(table.email),
+    uniqueIndex('password_reset_challenges_reset_token_hash_unique')
+      .on(table.resetTokenHash)
+      .where(sql`${table.resetTokenHash} IS NOT NULL`),
+  ],
+);
+
 export const examples = pgTable(
   'examples',
   {
@@ -360,6 +398,7 @@ export const workoutSetLogs = pgTable(
 
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(userSessions),
+  passwordResetChallenges: many(passwordResetChallenges),
   gymProfiles: many(gymProfiles),
   userConstraints: many(userConstraints),
   workoutPrograms: many(workoutPrograms),
@@ -372,6 +411,16 @@ export const userSessionsRelations = relations(userSessions, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const passwordResetChallengesRelations = relations(
+  passwordResetChallenges,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [passwordResetChallenges.userId],
+      references: [users.id],
+    }),
+  }),
+);
 
 export const gymProfilesRelations = relations(gymProfiles, ({ one, many }) => ({
   user: one(users, {
@@ -462,6 +511,9 @@ export type NewUser = typeof users.$inferInsert;
 
 export type UserSession = typeof userSessions.$inferSelect;
 export type NewUserSession = typeof userSessions.$inferInsert;
+
+export type PasswordResetChallenge = typeof passwordResetChallenges.$inferSelect;
+export type NewPasswordResetChallenge = typeof passwordResetChallenges.$inferInsert;
 
 export type Exercise = typeof exercises.$inferSelect;
 export type NewExercise = typeof exercises.$inferInsert;

@@ -98,12 +98,30 @@ All domain routes are exposed under `/api/v1` (with root aliases for compatibili
 | | `POST` | `/api/v1/login` | Authenticate user credentials & issue tokens | None |
 | | `POST` | `/api/v1/refresh` | Rotate refresh token with replay protection | None |
 | | `POST` | `/api/v1/logout` | Revoke active refresh session | None |
+| | `POST` | `/api/v1/auth/change-password` | Change account password & revoke sessions | Bearer Token |
 | **Users** | `GET` | `/api/v1/users/:id` | Get user profile (IDOR protected) | Bearer Token |
 | | `PUT` | `/api/v1/users/:id` | Update profile information | Bearer Token |
 | | `DELETE` | `/api/v1/users/:id` | Soft-delete user account and sessions | Bearer Token |
 | **Admin** | `GET` | `/api/v1/admin/users` | List all users (admin only) | Admin Token |
 | | `PATCH`| `/api/v1/admin/users/:id/role`| Update user role (`user`/`admin`) | Admin Token |
 | | `POST` | `/api/v1/admin/users/:id/revoke-sessions`| Invalidate user sessions | Admin Token |
+| **Programs** | `POST` | `/api/v1/programs/generate` | Generate periodized workout program with baseline strength seeding | Bearer Token |
+| | `GET` | `/api/v1/routines/:routineId/exercises/:id/alternatives` | Get smart machine swap suggestions | Bearer Token |
+| | `POST` | `/api/v1/routines/:routineId/exercises/:id/swap` | Swap routine exercise with alternative | Bearer Token |
+| **Sessions** | `POST` | `/api/v1/sessions/start` | Start in-progress workout session | Bearer Token |
+| | `GET` | `/api/v1/sessions/active` | Get currently active workout session | Bearer Token |
+| | `POST` | `/api/v1/sessions/:sessionId/sets` | Log single exercise set | Bearer Token |
+| | `PUT` | `/api/v1/sessions/:sessionId/sets/:setId` | Update recorded exercise set | Bearer Token |
+| | `DELETE`| `/api/v1/sessions/:sessionId/sets/:setId` | Delete recorded exercise set | Bearer Token |
+| | `POST` | `/api/v1/sessions/:sessionId/finish` | Finish session & compute volume/duration | Bearer Token |
+| | `POST` | `/api/v1/sessions/:sessionId/hit-prescribed` | One-tap finish hitting all prescribed targets | Bearer Token |
+| | `POST` | `/api/v1/sessions/:sessionId/cancel` | Cancel/abandon in-progress session | Bearer Token |
+| | `GET` | `/api/v1/sessions` | List paginated workout sessions history | Bearer Token |
+| | `GET` | `/api/v1/sessions/:sessionId` | Get complete session details with set logs | Bearer Token |
+| **AI Coach** | `POST` | `/api/v1/coach/chat` | Conversational coaching grounded in user profile | Bearer Token |
+| | `GET` | `/api/v1/coach/briefing` | Pre-session briefing, today's workout & tip | Bearer Token |
+| | `GET` | `/api/v1/coach/weekly-review` | End-of-week review, volume, adherence & verdict | Bearer Token |
+| | `GET` | `/api/v1/coach/mascot-state` | Bruno mascot animation state (visual feedback) | Bearer Token |
 
 > For complete request/response schemas and payload examples, visit the live Swagger UI at `/docs`.
 

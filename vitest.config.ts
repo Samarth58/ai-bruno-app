@@ -13,8 +13,11 @@ const isUnitOnly = process.argv.some(
     arg.includes('swagger') ||
     arg.includes('coach') ||
     arg.includes('programs') ||
-    arg.includes('workoutSessions'),
+    arg.includes('workoutSessions') ||
+    arg.includes('overload') ||
+    arg.includes('analytics'),
 );
+
 
 
 

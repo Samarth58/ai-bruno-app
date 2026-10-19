@@ -198,9 +198,10 @@ export async function revokeSession(refreshTokenString: string): Promise<void> {
 }
 
 export async function revokeAllSessionsForUser(userId: string): Promise<void> {
+  const pastGrace = new Date(Date.now() - (REFRESH_REUSE_GRACE_SECONDS + 10) * 1000);
   await db
     .update(userSessions)
-    .set({ revokedAt: new Date() })
+    .set({ revokedAt: pastGrace })
     .where(
       and(
         eq(userSessions.userId, userId),
