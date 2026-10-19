@@ -1,0 +1,254 @@
+/**
+ * Bruno AI Gym Buddy — Claymorphism Design System
+ * Soft, tactile 3D clay aesthetic inspired by the reference design.
+ * Light mode only. Pastel coral, blush, warm cream, lavender, mint, and soft yellow.
+ */
+
+:root {
+  /* Color Palette */
+  --bg-app: #fcf5f2;
+  --bg-sidebar: #ff8581;
+  --bg-sidebar-gradient: linear-gradient(180deg, #ff8c88 0%, #ff7975 100%);
+  --bg-hero: linear-gradient(135deg, #ffc7c3 0%, #ffb6b1 50%, #ffa5a0 100%);
+  --bg-card: #ffffff;
+  --bg-card-subtle: #faf4f1;
+
+  /* Pastel Accents */
+  --pastel-coral: #ff7470;
+  --pastel-coral-light: #ffecec;
+  --pastel-coral-border: #ffd5d3;
+
+  --pastel-purple: #9275f5;
+  --pastel-purple-light: #efeaff;
+  --pastel-purple-border: #ddd2ff;
+
+  --pastel-yellow: #f5a623;
+  --pastel-yellow-light: #fff5dd;
+  --pastel-yellow-border: #ffe9b8;
+
+  --pastel-mint: #38b284;
+  --pastel-mint-light: #e5f8f0;
+  --pastel-mint-border: #c3eedc;
+
+  --pastel-blue: #3ba4e6;
+  --pastel-blue-light: #e8f5fe;
+  --pastel-blue-border: #cde6fb;
+
+  /* Text & Neutral */
+  --text-primary: #2d2627;
+  --text-secondary: #7e7374;
+  --text-muted: #aba0a1;
+  --text-light: #ffffff;
+  --text-on-coral: #ffffff;
+
+  /* Clay Shadows & Inset Highlights */
+  --clay-card-shadow: 
+    0 14px 28px -6px rgba(225, 140, 140, 0.22),
+    0 4px 10px -2px rgba(225, 140, 140, 0.12),
+    inset 0 2px 4px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 5px rgba(210, 140, 140, 0.08);
+
+  --clay-card-hover-shadow: 
+    0 20px 36px -6px rgba(225, 130, 130, 0.28),
+    0 6px 14px -2px rgba(225, 130, 130, 0.16),
+    inset 0 2px 4px rgba(255, 255, 255, 1),
+    inset 0 -2px 5px rgba(210, 140, 140, 0.1);
+
+  --clay-sidebar-shadow: 
+    0 18px 40px rgba(255, 115, 110, 0.32),
+    inset 0 2px 4px rgba(255, 255, 255, 0.45),
+    inset 0 -4px 10px rgba(170, 50, 50, 0.18);
+
+  --clay-pill-active-shadow: 
+    0 8px 18px rgba(210, 70, 70, 0.24),
+    inset 0 2px 3px rgba(255, 255, 255, 1),
+    inset 0 -2px 4px rgba(220, 120, 120, 0.15);
+
+  --clay-button-shadow: 
+    0 8px 16px rgba(255, 110, 105, 0.35),
+    inset 0 2px 3px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 4px rgba(180, 50, 50, 0.2);
+
+  --clay-inset-field-shadow: 
+    inset 0 2px 5px rgba(200, 160, 160, 0.18),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.8),
+    0 2px 6px rgba(240, 190, 190, 0.1);
+
+  /* Border Radii */
+  --radius-sidebar: 32px;
+  --radius-card: 24px;
+  --radius-card-sm: 18px;
+  --radius-pill: 9999px;
+  --radius-avatar: 50%;
+
+  /* Transitions */
+  --transition-clay: all 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+  --transition-smooth: all 0.2s ease-in-out;
+}
+
+/* Base Reset & Typography */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Clay Surface Utility Classes */
+.clay-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--clay-card-shadow);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  transition: var(--transition-clay);
+}
+
+.clay-card:hover {
+  box-shadow: var(--clay-card-hover-shadow);
+}
+
+.clay-card-sm {
+  background: var(--bg-card);
+  border-radius: var(--radius-card-sm);
+  box-shadow: var(--clay-card-shadow);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  transition: var(--transition-clay);
+}
+
+/* Pill Badges and Buttons */
+.clay-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius-pill);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  background: var(--pastel-coral);
+  color: var(--text-light);
+  box-shadow: var(--clay-button-shadow);
+  transition: var(--transition-clay);
+  user-select: none;
+}
+
+.clay-pill-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+}
+
+.clay-pill-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 8px rgba(255, 110, 105, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.clay-pill-btn-white {
+  background: #ffffff;
+  color: var(--pastel-coral);
+  box-shadow: 
+    0 8px 16px rgba(220, 120, 120, 0.2),
+    inset 0 2px 3px rgba(255, 255, 255, 1),
+    inset 0 -2px 4px rgba(230, 160, 160, 0.12);
+}
+
+.clay-pill-btn-white:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px rgba(220, 120, 120, 0.25);
+}
+
+/* Inset Form Fields */
+.clay-input {
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(245, 215, 215, 0.6);
+  background: #ffffff;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.92rem;
+  box-shadow: var(--clay-inset-field-shadow);
+  outline: none;
+  transition: var(--transition-smooth);
+}
+
+.clay-input:focus {
+  border-color: var(--pastel-coral);
+  box-shadow: 
+    inset 0 2px 5px rgba(255, 120, 120, 0.15),
+    0 0 0 3px rgba(255, 130, 125, 0.2);
+}
+
+/* Icon Badges */
+.pastel-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  transition: var(--transition-clay);
+}
+
+.pastel-icon-badge.coral {
+  background: var(--pastel-coral-light);
+  color: var(--pastel-coral);
+  border: 1px solid var(--pastel-coral-border);
+}
+
+.pastel-icon-badge.purple {
+  background: var(--pastel-purple-light);
+  color: var(--pastel-purple);
+  border: 1px solid var(--pastel-purple-border);
+}
+
+.pastel-icon-badge.yellow {
+  background: var(--pastel-yellow-light);
+  color: var(--pastel-yellow);
+  border: 1px solid var(--pastel-yellow-border);
+}
+
+.pastel-icon-badge.mint {
+  background: var(--pastel-mint-light);
+  color: var(--pastel-mint);
+  border: 1px solid var(--pastel-mint-border);
+}
+
+.pastel-icon-badge.blue {
+  background: var(--pastel-blue-light);
+  color: var(--pastel-blue);
+  border: 1px solid var(--pastel-blue-border);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ecd5d2;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #e2beba;
+}

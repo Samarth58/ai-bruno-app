@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bruno AI Gym Buddy — Claymorphism Admin Dashboard</title>
+  
+  <!-- Modern Clean Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Claymorphism Design System & Dashboard Styles -->
+  <link rel="stylesheet" href="css/claymorphism.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- =========================================================================
+         Sidebar Navigation
+         ========================================================================= -->
+    <aside class="sidebar" id="sidebar">
+      
+      <!-- Brand Header -->
+      <div class="sidebar-header">
+        <img src="assets/bruno_avatar.jpg" alt="Bruno Bear" class="brand-avatar" id="sidebar-brand-avatar">
+        <div class="brand-info">
+          <h2>Bruno</h2>
+          <span>AI Gym Buddy</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+        <a href="#dashboard" class="nav-link active" data-view="dashboard" id="nav-dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+
+        <a href="#users" class="nav-link" data-view="users" id="nav-users">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          <span>Users</span>
+        </a>
+
+        <a href="#workouts" class="nav-link" data-view="workouts" id="nav-workouts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6.5 6.5 11 11"></path>
+            <path d="m21 21-1-1"></path>
+            <path d="m3 3 1 1"></path>
+            <path d="m18 22 4-4"></path>
+            <path d="m2 6 4-4"></path>
+            <path d="m3 10 7-7"></path>
+            <path d="m14 21 7-7"></path>
+          </svg>
+          <span>Workouts</span>
+        </a>
+
+        <a href="#exercises" class="nav-link" data-view="exercises" id="nav-exercises">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" x2="12" y1="8" y2="16"></line>
+            <line x1="8" x2="16" y1="12" y2="12"></line>
+          </svg>
+          <span>Exercises</span>
+        </a>
+
+        <a href="#programs" class="nav-link" data-view="programs" id="nav-programs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" x2="8" y1="13" y2="13"></line>
+            <line x1="16" x2="8" y1="17" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>Programs</span>
+        </a>
+
+        <a href="#analytics" class="nav-link" data-view="analytics" id="nav-analytics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" x2="18" y1="20" y2="10"></line>
+            <line x1="12" x2="12" y1="20" y2="4"></line>
+            <line x1="6" x2="6" y1="20" y2="14"></line>
+          </svg>
+          <span>Analytics</span>
+        </a>
+
+        <a href="#notifications" class="nav-link" data-view="notifications" id="nav-notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+          </svg>
+          <span>Notifications</span>
+        </a>
+
+        <a href="#settings" class="nav-link" data-view="settings" id="nav-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <!-- Bottom Card: Stronger Together -->
+      <div class="sidebar-footer-card">
+        <img src="assets/bruno_cheer.jpg" alt="Bruno Thumbs Up" class="footer-card-img">
+        <h4>Stronger Together!</h4>
+        <p>Better workouts. Happier you.</p>
+      </div>
+
+    </aside>
+
+    <!-- =========================================================================
+         Main Content Area
+         ========================================================================= -->
+    <main class="main-wrapper">
+      
+      <!-- Top Header -->
+      <header class="header">
+        
+        <div style="display:flex; align-items:center; gap:12px;">
+          <!-- Mobile Hamburger -->
+          <button class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Toggle Navigation">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+
+          <div class="header-left">
+            <h1 class="admin-greeting" id="admin-greeting-name">Welcome back, Admin! 👋</h1>
+            <p class="dashboard-subtitle">Here's what's happening with Bruno today.</p>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Backend API Status Indicator -->
+          <div id="api-status-pill" style="display:flex; align-items:center; gap:6px; padding:6px 14px; background:#fff; border-radius:9999px; box-shadow:var(--clay-card-shadow); cursor:pointer;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38b284;"></span>
+            <span style="font-size:0.75rem; font-weight:700; color:#38b284;">API Connected</span>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="dashboard-search-input" class="search-input" placeholder="Search users, workouts, or anything..." aria-label="Search">
+          </div>
+
+          <!-- Notification Bell -->
+          <button class="notification-btn" id="notification-bell-btn" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+            </svg>
+            <span class="notification-badge" id="header-unread-count">3</span>
+          </button>
+
+          <!-- Admin Profile Pill -->
+          <div class="admin-profile" id="admin-profile-btn">
+            <div class="admin-avatar" id="admin-avatar-initial">A</div>
+            <span class="admin-name" id="admin-menu-name">Admin</span>
+            <svg class="admin-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+
+            <!-- Dropdown Menu -->
+            <div id="admin-profile-dropdown" style="display:none; position:absolute; top:calc(100% + 8px); right:0; background:#fff; border-radius:18px; box-shadow:var(--clay-card-hover-shadow); padding:8px; min-width:160px; z-index:500; border:1px solid rgba(255,255,255,0.9);">
+              <a href="#settings" class="nav-link" style="color:var(--text-primary); font-size:0.85rem; padding:8px 12px;">Settings</a>
+              <button id="btn-admin-logout" class="nav-link" style="color:#ff4757; font-size:0.85rem; padding:8px 12px; width:100%; text-align:left; border:none; background:none; cursor:pointer;">Sign Out</button>
+            </div>
+          </div>
+        </div>
+
+      </header>
+
+      <!-- =====================================================================
+           VIEW: DASHBOARD (Default)
+           ===================================================================== -->
+      <section class="view-container active" id="view-dashboard">
+        
+        <div class="dashboard-grid">
+          
+          <!-- Main Left Column -->
+          <div class="dashboard-main-col">
+            
+            <!-- Hero Banner -->
+            <div class="hero-card">
+              <div class="hero-mascot-container">
+                <img src="assets/bruno_hero.jpg" alt="Bruno with Dumbbells" class="hero-mascot-img">
+              </div>
+
+              <div class="hero-content">
+                <h1>Build Healthier Habits, One Workout at a Time</h1>
+                <p>Track progress, manage users, and keep your gym community motivated.</p>
+                <button class="hero-btn" id="hero-view-analytics-btn">
+                  <span>View Analytics</span>
+                  <span>→</span>
+                </button>
+              </div>
+
+              <div class="hero-badge-bubble">
+                <span>Let's Grow! 🌱</span>
+              </div>
+            </div>
+
+            <!-- KPI Cards Grid (4 Cards) -->
+            <div class="kpi-grid">
+              <div id="kpi-users-container">
+                <div class="clay-card kpi-card">
+                  <div class="kpi-header">
+                    <div class="pastel-icon-badge coral">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                    </div>
+                    <h3>Total Users</h3>
+                  </div>
+                  <div class="kpi-body">
+                    <div class="kpi-metric">--</div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="kpi-workouts-container">
+                <div class="clay-card kpi-card">
+                  <div class="kpi-header">
+                    <div class="pastel-icon-badge purple">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6.5 6.5 11 11"></path></svg>
+                    </div>
+                    <h3>Active Workouts</h3>
+                  </div>
+                  <div class="kpi-body">
+                    <div class="kpi-metric">--</div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="kpi-programs-container">
+                <div class="clay-card kpi-card">
+                  <div class="kpi-header">
+                    <div class="pastel-icon-badge yellow">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2"></rect></svg>
+                    </div>
+                    <h3>Programs Created</h3>
+                  </div>
+                  <div class="kpi-body">
+                    <div class="kpi-metric">--</div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="kpi-streak-container">
+                <div class="clay-card kpi-card">
+                  <div class="kpi-header">
+                    <div class="pastel-icon-badge mint">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12"></path></svg>
+                    </div>
+                    <h3>Avg. Streak</h3>
+                  </div>
+                  <div class="kpi-body">
+                    <div class="kpi-metric">--</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Analytics Section: Workout Distribution & User Growth -->
+            <div class="analytics-grid">
+              
+              <!-- Workout Distribution (Donut Chart) -->
+              <div class="clay-card analytics-card">
+                <div class="card-header-bar">
+                  <h3 class="card-title">Workout Distribution</h3>
+                  <select class="clay-select" id="distribution-range-select" aria-label="Distribution Range">
+                    <option value="week">This Week</option>
+                    <option value="month">Last 30 Days</option>
+                    <option value="all">All Time</option>
+                  </select>
+                </div>
+
+                <div class="chart-wrapper">
+                  <div class="donut-container">
+                    <div class="donut-chart-box">
+                      <canvas id="donutChartCanvas" width="180" height="180"></canvas>
+                    </div>
+                    <div class="donut-legend" id="distribution-legend">
+                      <!-- Populated dynamically -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- User Growth (Area Line Chart) -->
+              <div class="clay-card analytics-card">
+                <div class="card-header-bar">
+                  <h3 class="card-title">User Growth</h3>
+                  <select class="clay-select" id="growth-range-select" aria-label="Growth Range">
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                  </select>
+                </div>
+
+                <div class="chart-wrapper">
+                  <canvas id="growthChartCanvas" style="width:100%; height:100%;"></canvas>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Side Column (340px) -->
+          <div class="dashboard-side-col">
+            
+            <!-- Quick Actions -->
+            <div class="clay-card quick-actions-card">
+              <h3 class="card-title">Quick Actions</h3>
+              <div class="quick-actions-grid">
+                <button class="action-tile add-user" id="action-add-user">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+                  <span>Add User</span>
+                </button>
+
+                <button class="action-tile create-workout" id="action-create-workout">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6.5 6.5 11 11"></path><path d="m21 21-1-1"></path><path d="m3 3 1 1"></path></svg>
+                  <span>Create Workout</span>
+                </button>
+
+                <button class="action-tile add-program" id="action-add-program">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="4" rx="2"></rect><line x1="12" y1="9" x2="12" y2="15"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
+                  <span>Add Program</span>
+                </button>
+
+                <button class="action-tile view-reports" id="action-view-reports">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                  <span>View Reports</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Recent Activity Feed -->
+            <div class="clay-card recent-activity-card">
+              <h3 class="card-title">Recent Activity</h3>
+              <div class="activity-list" id="recent-activity-container">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Bottom 3-Card Row (Recent Users, Recent Workouts, Motivational Cheer Card) -->
+        <div class="dashboard-bottom-row">
+          
+          <!-- Recent Users Card -->
+          <div class="clay-card recent-users-card">
+            <div class="card-header-bar">
+              <h3 class="card-title">Recent Users</h3>
+              <a href="#users" class="view-all-link" id="view-all-users-link">View All →</a>
+            </div>
+            <div class="users-h-scroll" id="recent-users-container">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Recent Workouts Card -->
+          <div class="clay-card recent-workouts-card">
+            <div class="card-header-bar">
+              <h3 class="card-title">Recent Workouts</h3>
+              <a href="#workouts" class="view-all-link" id="view-all-workouts-link">View All →</a>
+            </div>
+            <div id="recent-workouts-container" style="display:flex; flex-direction:column; gap:8px;">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Motivational Cheer Card -->
+          <div class="cheer-card">
+            <img src="assets/bruno_cheer.jpg" alt="Bruno Bear" class="cheer-mascot-img">
+            <div class="cheer-content">
+              <p>Small steps every day lead to big results!</p>
+              <div class="cheer-author">— Bruno</div>
+            </div>
+            <div class="cheer-heart">♥</div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================================================
+           VIEW: USERS (#users)
+           ===================================================================== -->
+      <section class="view-container" id="view-users">
+        <div class="view-header">
+          <div>
+            <h2>User Management</h2>
+            <p class="dashboard-subtitle">Active lifters, role assignments, and account security controls.</p>
+          </div>
+          <button class="clay-pill-btn" onclick="UI.openModal('modal-add-user')">
+            + Register New Lifter
+          </button>
+        </div>
+
+        <div class="clay-card table-card">
+          <table class="clay-table">
+            <thead>
+              <tr>
+                <th>Lifter / Email</th>
+                <th>Role</th>
+                <th>Registered</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-tbody">
+              <tr><td colspan="5" class="empty-state">Loading users...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW: WORKOUTS (#workouts)
+           ===================================================================== -->
+      <section class="view-container" id="view-workouts">
+        <div class="view-header">
+          <div>
+            <h2>Workout Sessions</h2>
+            <p class="dashboard-subtitle">Real-time training logs, perceived exertion, and session history.</p>
+          </div>
+          <button class="clay-pill-btn" onclick="UI.openModal('modal-start-workout')">
+            + Start Active Workout
+          </button>
+        </div>
+
+        <div id="workouts-list-container" style="display:flex; flex-direction:column; gap:12px;">
+          <div class="empty-state">Loading workouts...</div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW: EXERCISES (#exercises)
+           ===================================================================== -->
+      <section class="view-container" id="view-exercises">
+        <div class="view-header">
+          <div>
+            <h2>Exercise Catalogue</h2>
+            <p class="dashboard-subtitle">Strength movements, muscle groups, equipment requirements, and technique.</p>
+          </div>
+        </div>
+
+        <div id="exercises-grid-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+          <div class="empty-state">Loading exercise catalogue...</div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW: PROGRAMS (#programs)
+           ===================================================================== -->
+      <section class="view-container" id="view-programs">
+        <div class="view-header">
+          <div>
+            <h2>Workout Programs</h2>
+            <p class="dashboard-subtitle">Periodized training schedules, push/pull/legs splits, and AI generated routines.</p>
+          </div>
+          <button class="clay-pill-btn" onclick="UI.openModal('modal-create-program')">
+            + Create Program
+          </button>
+        </div>
+
+        <div id="programs-grid-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:18px;">
+          <div class="empty-state">Loading programs...</div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW: ANALYTICS (#analytics)
+           ===================================================================== -->
+      <section class="view-container" id="view-analytics">
+        <div class="view-header">
+          <div>
+            <h2>Training Analytics & Growth</h2>
+            <p class="dashboard-subtitle">Comprehensive muscle volume distribution, streaks, and progress summary.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="clay-card" style="padding:24px;">
+            <h3 class="card-title" style="margin-bottom:16px;">Weekly Workout Consistency</h3>
+            <div id="consistency-breakdown-container" style="display:flex; flex-direction:column; gap:10px;">
+              <div class="empty-state">Loading weekly consistency...</div>
+            </div>
+          </div>
+
+          <div class="clay-card" style="padding:24px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+            <img src="assets/bruno_avatar.jpg" alt="Bruno" style="width:96px; height:96px; border-radius:50%; border:3px solid #ff7470; margin-bottom:14px; box-shadow:0 8px 18px rgba(255,100,100,0.25);">
+            <h3 style="font-weight:800; font-size:1.2rem;">Evidence-Based Overload</h3>
+            <p style="color:var(--text-secondary); font-size:0.88rem; max-width:320px; margin-top:6px;">
+              Progression curve algorithmically adapts volume and intensity based on RPE and joint soreness.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW: NOTIFICATIONS (#notifications)
+           ===================================================================== -->
+      <section class="view-container" id="view-notifications">
+        <div class="view-header">
+          <div>
+            <h2>Notifications Center</h2>
+            <p class="dashboard-subtitle">System notifications, security audits, and lifter alerts.</p>
+          </div>
+        </div>
+
+        <div class="clay-card" style="padding:32px; text-align:center;">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+            </svg>
+            <h4>All Caught Up!</h4>
+            <p>Push alerts and scheduled reminder integrations will automatically appear here once scheduled by the backend.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW: SETTINGS (#settings)
+           ===================================================================== -->
+      <section class="view-container" id="view-settings">
+        <div class="view-header">
+          <div>
+            <h2>Dashboard Settings & Diagnostics</h2>
+            <p class="dashboard-subtitle">Configure backend API connection, inspect server uptime, and session options.</p>
+          </div>
+        </div>
+
+        <div class="clay-card" style="padding:28px; max-width:640px;">
+          <h3 class="card-title" style="margin-bottom:16px;">Bruno API Base URL</h3>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label for="settings-api-url">API Endpoint</label>
+            <input type="text" id="settings-api-url" class="clay-input" value="http://localhost:3000">
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+              Default: http://localhost:3000. Switch to a deployed API URL if running remote backend.
+            </span>
+          </div>
+          <button class="clay-pill-btn" id="btn-save-settings">Save API Endpoint</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       MODALS
+       ========================================================================= -->
+
+  <!-- 1. Admin Login Modal -->
+  <div class="modal-overlay" id="modal-login">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <img src="assets/bruno_avatar.jpg" alt="Bruno" style="width:40px; height:40px; border-radius:50%;">
+          <h3>Admin Sign In</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+
+      <p style="font-size:0.86rem; color:var(--text-secondary);">
+        Please authenticate with an Administrator account to access the Bruno Admin Dashboard.
+      </p>
+
+      <div id="login-error-msg" style="color:#ff4757; font-size:0.84rem; font-weight:700;"></div>
+
+      <form id="form-login" class="modal-form">
+        <div class="form-group">
+          <label for="login-email">Admin Email</label>
+          <input type="email" id="login-email" class="clay-input" required value="samarthahg2004@gmail.com" placeholder="samarthahg2004@gmail.com">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" class="clay-input" required placeholder="••••••••">
+        </div>
+
+        <div class="form-actions" style="flex-direction:column; gap:8px;">
+          <button type="submit" class="clay-pill-btn" style="width:100%;">Sign In as Admin</button>
+          <button type="button" id="btn-fill-admin-creds" class="table-btn" style="width:100%; padding:10px; border-radius:var(--radius-pill); background:var(--pastel-coral-light); color:var(--pastel-coral);">
+            Fill Admin Email
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Add User Modal -->
+  <div class="modal-overlay" id="modal-add-user">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Register New Lifter</h3>
+        <button class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+      <form id="form-add-user" class="modal-form">
+        <div class="form-group">
+          <label for="new-user-name">Full Name</label>
+          <input type="text" id="new-user-name" class="clay-input" placeholder="e.g. John Doe">
+        </div>
+        <div class="form-group">
+          <label for="new-user-email">Email Address</label>
+          <input type="email" id="new-user-email" class="clay-input" required placeholder="lifter@example.com">
+        </div>
+        <div class="form-group">
+          <label for="new-user-password">Initial Password (min 8 characters)</label>
+          <input type="password" id="new-user-password" class="clay-input" required minlength="8" placeholder="••••••••">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="clay-pill-btn clay-pill-btn-white" onclick="UI.closeModal('modal-add-user')">Cancel</button>
+          <button type="submit" class="clay-pill-btn">Register Lifter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. User Details & Role Management Modal -->
+  <div class="modal-overlay" id="modal-user-details">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="user-detail-name">User Details</h3>
+        <button class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px; font-size:0.88rem;">
+        <div><strong>Email:</strong> <span id="user-detail-email" style="color:var(--text-secondary);"></span></div>
+        <div><strong>User ID:</strong> <span id="user-detail-id" style="color:var(--text-muted); font-size:0.78rem;"></span></div>
+        <div><strong>Current Role:</strong> <span id="user-detail-role" class="role-badge user"></span></div>
+        <div><strong>Registered At:</strong> <span id="user-detail-created" style="color:var(--text-secondary);"></span></div>
+      </div>
+
+      <div style="border-top:1px solid rgba(0,0,0,0.06); padding-top:16px;">
+        <h4 style="font-size:0.9rem; font-weight:800; margin-bottom:8px;">Update Role</h4>
+        <div style="display:flex; gap:10px;">
+          <select id="user-detail-role-select" class="clay-select" style="flex:1;">
+            <option value="user">User (Lifter)</option>
+            <option value="admin">Administrator</option>
+          </select>
+          <button class="clay-pill-btn" id="btn-save-user-role" style="padding:8px 16px;">Save Role</button>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid rgba(0,0,0,0.06); padding-top:16px; display:flex; justify-content:space-between; gap:10px;">
+        <button class="table-btn" id="btn-revoke-user-sessions" style="padding:10px 16px;">Revoke All Sessions</button>
+        <button class="table-btn danger" id="btn-delete-user" style="padding:10px 16px;">Soft Delete User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Start Workout Modal -->
+  <div class="modal-overlay" id="modal-start-workout">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Start Workout Session</h3>
+        <button class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+      <form id="form-start-workout" class="modal-form">
+        <div class="form-group">
+          <label for="workout-notes-input">Workout Notes / Routine Title</label>
+          <input type="text" id="workout-notes-input" class="clay-input" placeholder="e.g. Upper Body Blast (Chest & Arms)">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="clay-pill-btn clay-pill-btn-white" onclick="UI.closeModal('modal-start-workout')">Cancel</button>
+          <button type="submit" class="clay-pill-btn">Begin Workout</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Create Program Modal -->
+  <div class="modal-overlay" id="modal-create-program">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Create Workout Program</h3>
+        <button class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+      <form id="form-create-program" class="modal-form">
+        <div class="form-group">
+          <label for="prog-name-input">Program Name</label>
+          <input type="text" id="prog-name-input" class="clay-input" required placeholder="e.g. Hypertrophy Foundation">
+        </div>
+        <div class="form-group">
+          <label for="prog-split-select">Split Type</label>
+          <select id="prog-split-select" class="clay-select" style="width:100%; padding:10px 16px;">
+            <option value="push_pull_legs">Push / Pull / Legs</option>
+            <option value="upper_lower">Upper / Lower Split</option>
+            <option value="full_body">Full Body</option>
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label for="prog-duration-input">Duration (Weeks)</label>
+            <input type="number" id="prog-duration-input" class="clay-input" value="4" min="1" max="52">
+          </div>
+          <div class="form-group">
+            <label for="prog-days-input">Days / Week</label>
+            <input type="number" id="prog-days-input" class="clay-input" value="4" min="1" max="7">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="clay-pill-btn clay-pill-btn-white" onclick="UI.closeModal('modal-create-program')">Cancel</button>
+          <button type="submit" class="clay-pill-btn">Create Program</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. Exercise Details Modal -->
+  <div class="modal-overlay" id="modal-exercise-details">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="exercise-modal-title">Exercise</h3>
+        <button class="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; font-size:0.88rem;">
+        <div><strong>Primary Muscle:</strong> <span id="exercise-modal-muscle"></span></div>
+        <div><strong>Movement Pattern:</strong> <span id="exercise-modal-pattern"></span></div>
+        <div><strong>Equipment Required:</strong> <span id="exercise-modal-equip"></span></div>
+        <div style="margin-top:8px;">
+          <strong>Instructions:</strong>
+          <p id="exercise-modal-instructions" style="color:var(--text-secondary); margin-top:4px; line-height:1.5;"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       NOTIFICATION DRAWER
+       ========================================================================= -->
+  <aside class="notification-drawer" id="notification-drawer">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <h3 style="font-weight:800; font-size:1.15rem;">Notifications</h3>
+      <button class="modal-close-btn" id="notification-drawer-close">✕</button>
+    </div>
+    <div style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px;">
+      <div class="activity-item">
+        <div class="activity-left">
+          <div class="pastel-icon-badge mint" style="width:34px; height:34px;">✓</div>
+          <div class="activity-info">
+            <h4>System Online</h4>
+            <p>Database & Fastify server healthy</p>
+          </div>
+        </div>
+        <span style="font-size:0.75rem; color:var(--text-muted);">Just now</span>
+      </div>
+      <div class="activity-item">
+        <div class="activity-left">
+          <div class="pastel-icon-badge purple" style="width:34px; height:34px;">🔒</div>
+          <div class="activity-info">
+            <h4>Security Guard Active</h4>
+            <p>Argon2id & refresh replay active</p>
+          </div>
+        </div>
+        <span style="font-size:0.75rem; color:var(--text-muted);">5m ago</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Application Entry Scripts (ES Modules) -->
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>

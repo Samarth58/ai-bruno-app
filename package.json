@@ -15,6 +15,7 @@
     "db:seed": "tsx scripts/seedExercises.ts",
     "generate:module": "tsx scripts/generateModule.ts",
     "integrate:module": "tsx scripts/integrateModule.ts",
+    "dashboard": "node scripts/serveDashboard.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
