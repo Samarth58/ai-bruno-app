@@ -7,6 +7,7 @@ import { registerCors, type CorsPluginOptions } from './plugins/cors.js';
 import { registerHelmet, type HelmetPluginOptions } from './plugins/helmet.js';
 import { registerRateLimiter, type RateLimiterOptions } from './plugins/rateLimiter.js';
 import { registerSwagger } from './plugins/swagger.js';
+import { registerAdminDashboard } from './plugins/adminDashboard.js';
 import { apiV1Routes } from './routes/apiV1.js';
 import { healthRoutes } from './routes/health.js';
 import { fail } from './utils/response.js';
@@ -142,6 +143,7 @@ export function buildApp(options?: AppOptions): FastifyInstance {
   app.register(registerCors, options?.cors || {});
   app.register(registerRateLimiter, options?.rateLimit || {});
   app.register(registerSwagger);
+  app.register(registerAdminDashboard);
   app.register(healthRoutes);
   app.register(apiV1Routes, { prefix: '/api/v1' });
   app.register(apiV1Routes);

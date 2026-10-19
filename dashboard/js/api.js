@@ -12,11 +12,19 @@ const STORAGE_KEYS = {
 
 export const API_CONFIG = {
   get baseUrl() {
-    return (
-      localStorage.getItem(STORAGE_KEYS.API_URL) ||
-      (window.__ENV__ && window.__ENV__.VITE_API_URL) ||
-      'http://localhost:3000'
-    );
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEYS.API_URL);
+      if (stored) return stored;
+      if (window.__ENV__ && window.__ENV__.VITE_API_URL) return window.__ENV__.VITE_API_URL;
+      // In browser, default to current origin unless running on standalone dev server (5173)
+      if (window.location && window.location.origin && window.location.origin !== 'null') {
+        if (window.location.port === '5173') {
+          return `${window.location.protocol}//${window.location.hostname}:3000`;
+        }
+        return window.location.origin;
+      }
+    }
+    return 'http://localhost:3000';
   },
   set baseUrl(url) {
     if (url) {
@@ -65,7 +73,11 @@ function onRefreshed(newAccessToken) {
  * { success: boolean, data?: any, error?: { code, message, details }, meta?: any }
  */
 export async function apiRequest(endpoint, options = {}) {
-  const url = `${API_CONFIG.baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const apiPath = cleanEndpoint.startsWith('/api/v1') || cleanEndpoint === '/health'
+    ? cleanEndpoint
+    : `/api/v1${cleanEndpoint}`;
+  const url = `${API_CONFIG.baseUrl}${apiPath}`;
   const headers = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -91,7 +103,7 @@ export async function apiRequest(endpoint, options = {}) {
         if (!isRefreshing) {
           isRefreshing = true;
           try {
-            const refreshRes = await fetch(`${API_CONFIG.baseUrl}/refresh`, {
+            const refreshRes = await fetch(`${API_CONFIG.baseUrl}/api/v1/refresh`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ refreshToken }),

@@ -23,6 +23,7 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY drizzle ./drizzle
+COPY dashboard ./dashboard
 
 EXPOSE 3000
 
