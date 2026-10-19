@@ -219,6 +219,91 @@ describe('OpenAPI / Swagger Documentation', () => {
     expect(paths['/api/v1/examples/{id}']).toBeUndefined();
   });
 
+  it('generates complete OpenAPI 3 requestBody schemas for register, login, refresh, and coach chat endpoints', async () => {
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/docs/json',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const spec = res.json();
+    const paths = spec.paths || {};
+
+    // 1. POST /api/v1/register request body
+    const registerPost = paths['/api/v1/register']?.post;
+    expect(registerPost).toBeDefined();
+    expect(registerPost?.requestBody).toBeDefined();
+    const registerBody = registerPost?.requestBody?.content?.['application/json']?.schema;
+    expect(registerBody).toBeDefined();
+    expect(registerBody?.type).toBe('object');
+    expect(registerBody?.required).toEqual(['email', 'password']);
+    expect(registerBody?.properties?.email?.type).toBe('string');
+    expect(registerBody?.properties?.email?.format).toBe('email');
+    expect(registerBody?.properties?.email?.example).toBe('lifter@example.com');
+    expect(registerBody?.properties?.password?.type).toBe('string');
+    expect(registerBody?.properties?.password?.minLength).toBe(8);
+    expect(registerBody?.properties?.password?.example).toBe('StrongPassword123!');
+    expect(registerBody?.properties?.name?.type).toBe('string');
+    expect(registerBody?.properties?.name?.example).toBe('Bruno Lifter');
+
+    // 2. POST /api/v1/login request body
+    const loginPost = paths['/api/v1/login']?.post;
+    expect(loginPost).toBeDefined();
+    expect(loginPost?.requestBody).toBeDefined();
+    const loginBody = loginPost?.requestBody?.content?.['application/json']?.schema;
+    expect(loginBody).toBeDefined();
+    expect(loginBody?.type).toBe('object');
+    expect(loginBody?.required).toEqual(['email', 'password']);
+    expect(loginBody?.properties?.email?.type).toBe('string');
+    expect(loginBody?.properties?.email?.format).toBe('email');
+    expect(loginBody?.properties?.email?.example).toBe('lifter@example.com');
+    expect(loginBody?.properties?.password?.type).toBe('string');
+    expect(loginBody?.properties?.password?.example).toBe('StrongPassword123!');
+
+    // 3. POST /api/v1/coach/chat request body
+    const coachChatPost = paths['/api/v1/coach/chat']?.post;
+    expect(coachChatPost).toBeDefined();
+    expect(coachChatPost?.requestBody).toBeDefined();
+    const coachBody = coachChatPost?.requestBody?.content?.['application/json']?.schema;
+    expect(coachBody).toBeDefined();
+    expect(coachBody?.type).toBe('object');
+    expect(coachBody?.required).toEqual(['message']);
+    expect(coachBody?.properties?.message?.type).toBe('string');
+    expect(coachBody?.properties?.message?.minLength).toBe(1);
+    expect(coachBody?.properties?.message?.maxLength).toBe(1000);
+    expect(coachBody?.properties?.message?.example).toBe('What should I train today with my dumbbells?');
+    expect(coachBody?.properties?.context?.type).toBe('object');
+    expect(coachBody?.properties?.context?.properties?.sessionId?.type).toBe('string');
+    expect(coachBody?.properties?.context?.properties?.sessionId?.format).toBe('uuid');
+    expect(coachBody?.properties?.context?.properties?.gymProfileId?.type).toBe('string');
+    expect(coachBody?.properties?.context?.properties?.gymProfileId?.format).toBe('uuid');
+
+    // 4. POST /api/v1/refresh request body
+    const refreshPost = paths['/api/v1/refresh']?.post;
+    expect(refreshPost).toBeDefined();
+    expect(refreshPost?.requestBody).toBeDefined();
+    const refreshBody = refreshPost?.requestBody?.content?.['application/json']?.schema;
+    expect(refreshBody?.required).toEqual(['refreshToken']);
+  });
+
+  it('configures Swagger UI with Try It Out enabled and supported submit methods for POST', async () => {
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/docs/static/swagger-initializer.js',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('application/javascript');
+    expect(res.payload).toContain('"tryItOutEnabled":true');
+    expect(res.payload).toContain('"post"');
+  });
+
   it('preserves normal route execution and behavior', async () => {
     const app = buildApp();
     const res = await app.inject({

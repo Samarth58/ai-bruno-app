@@ -24,6 +24,44 @@ export const coachChatRequestSchema = z.object({
   context: coachChatContextSchema,
 });
 
+export const coachChatBodySchema = {
+  type: 'object',
+  required: ['message'],
+  properties: {
+    message: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 1000,
+      description: 'Lifter message, training inquiry, or exercise question',
+      example: 'What should I train today with my dumbbells?',
+    },
+    context: {
+      type: 'object',
+      description: 'Optional workout session or gym profile context for coaching personalization',
+      properties: {
+        sessionId: {
+          type: 'string',
+          format: 'uuid',
+          nullable: true,
+          description: 'Optional UUID of an active or recent workout session',
+          example: null,
+        },
+        gymProfileId: {
+          type: 'string',
+          format: 'uuid',
+          nullable: true,
+          description: 'Optional UUID of a specific gym hardware profile',
+          example: null,
+        },
+      },
+      example: {
+        sessionId: null,
+        gymProfileId: null,
+      },
+    },
+  },
+};
+
 export type CoachChatRequestInput = z.infer<typeof coachChatRequestSchema>;
 export type CoachChatContextInput = z.infer<typeof coachChatContextSchema>;
 

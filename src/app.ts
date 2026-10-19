@@ -47,6 +47,11 @@ export function buildApp(options?: AppOptions): FastifyInstance {
               '*.token',
             ],
           },
+    ajv: {
+      customOptions: {
+        keywords: ['example'],
+      },
+    },
     requestIdHeader: false,
     genReqId: (req) => {
       const header = req.headers['x-request-id'];

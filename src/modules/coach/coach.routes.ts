@@ -7,7 +7,7 @@ import {
 } from '../../ai/ai.types.js';
 import { authGuard } from '../../middleware/authGuard.js';
 import { fail, ok } from '../../utils/response.js';
-import { coachChatRequestSchema } from './coach.schema.js';
+import { coachChatBodySchema, coachChatRequestSchema } from './coach.schema.js';
 import {
   CoachResourceNotFoundError,
   processCoachChat,
@@ -32,6 +32,7 @@ export async function coachRoutes(app: FastifyInstance): Promise<void> {
         description:
           'Conversational AI fitness coaching endpoint providing personalized, context-aware advice grounded in user gym equipment and physical constraints.',
         security: [{ bearerAuth: [] }],
+        body: coachChatBodySchema,
       },
     },
     async (request, reply) => {

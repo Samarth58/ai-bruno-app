@@ -43,6 +43,61 @@ function toUserResponse(user: {
   };
 }
 
+export const registerBodySchema = {
+  type: 'object',
+  required: ['email', 'password'],
+  properties: {
+    email: {
+      type: 'string',
+      format: 'email',
+      description: 'Unique email address for user registration',
+      example: 'lifter@example.com',
+    },
+    password: {
+      type: 'string',
+      minLength: 8,
+      description: 'Account password (minimum 8 characters)',
+      example: 'StrongPassword123!',
+    },
+    name: {
+      type: 'string',
+      description: 'Optional display name of the lifter',
+      example: 'Bruno Lifter',
+    },
+  },
+};
+
+export const loginBodySchema = {
+  type: 'object',
+  required: ['email', 'password'],
+  properties: {
+    email: {
+      type: 'string',
+      format: 'email',
+      description: 'Registered user email address',
+      example: 'lifter@example.com',
+    },
+    password: {
+      type: 'string',
+      description: 'Account password',
+      example: 'StrongPassword123!',
+    },
+  },
+};
+
+export const refreshTokenBodySchema = {
+  type: 'object',
+  required: ['refreshToken'],
+  properties: {
+    refreshToken: {
+      type: 'string',
+      minLength: 1,
+      description: 'Valid, unrevoked JWT refresh token',
+      example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJqdGkiOiJtb2NrLWp0aSIsInR5cCI6InJlZnJlc2gifQ.mock_signature',
+    },
+  },
+};
+
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post(
     '/register',
@@ -57,6 +112,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         tags: ['Auth'],
         summary: 'Register a new user',
         description: 'Creates a new user account with hashed password and returns access/refresh tokens.',
+        body: registerBodySchema,
       },
     },
     async (request, reply) => {
@@ -121,6 +177,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         tags: ['Auth'],
         summary: 'User login',
         description: 'Authenticates email/password credentials and issues a fresh token pair.',
+        body: loginBodySchema,
       },
     },
     async (request, reply) => {
@@ -187,6 +244,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         tags: ['Auth'],
         summary: 'Refresh token rotation',
         description: 'Rotates an active refresh token with single-use replay protection and 20s grace window.',
+        body: refreshTokenBodySchema,
       },
     },
     async (request, reply) => {
@@ -217,6 +275,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         tags: ['Auth'],
         summary: 'User logout',
         description: 'Revokes the active refresh token session in the database.',
+        body: refreshTokenBodySchema,
       },
     },
     async (request, reply) => {

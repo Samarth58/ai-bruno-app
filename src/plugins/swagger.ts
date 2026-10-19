@@ -44,6 +44,9 @@ async function swaggerPlugin(app: FastifyInstance): Promise<void> {
     uiConfig: {
       docExpansion: 'list',
       deepLinking: false,
+      displayRequestDuration: true,
+      supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+      tryItOutEnabled: true,
       urls: [
         {
           url: '/docs/json',
