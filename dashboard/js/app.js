@@ -217,6 +217,12 @@ function handleRoute() {
   // Close mobile sidebar on navigation
   const sidebar = document.getElementById('sidebar');
   if (sidebar) sidebar.classList.remove('mobile-open');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('visible');
+    backdrop.hidden = true;
+  }
+  document.getElementById('mobile-nav-toggle')?.setAttribute('aria-expanded', 'false');
 
   // Trigger view-specific loads if necessary
   if (hash === 'users') loadUsersView();
@@ -239,11 +245,49 @@ function bindNavigation() {
   // Mobile sidebar toggle
   const toggleBtn = document.getElementById('mobile-nav-toggle');
   const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
   if (toggleBtn && sidebar) {
     toggleBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('mobile-open');
+      const isOpen = sidebar.classList.toggle('mobile-open');
+      toggleBtn.setAttribute('aria-expanded', String(isOpen));
+      if (backdrop) {
+        backdrop.classList.toggle('visible', isOpen);
+        backdrop.hidden = !isOpen;
+      }
     });
   }
+  if (backdrop && sidebar) {
+    backdrop.addEventListener('click', () => {
+      sidebar.classList.remove('mobile-open');
+      backdrop.classList.remove('visible');
+      backdrop.hidden = true;
+      toggleBtn?.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  // Global Escape: close drawer, dropdown, then any open modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+
+    const drawer = document.getElementById('notification-drawer');
+    if (drawer?.classList.contains('open')) {
+      drawer.classList.remove('open');
+      document.getElementById('notification-bell-btn')?.setAttribute('aria-expanded', 'false');
+      return;
+    }
+
+    const dropdown = document.getElementById('admin-profile-dropdown');
+    if (dropdown && dropdown.style.display === 'block') {
+      dropdown.style.display = 'none';
+      document.getElementById('admin-profile-btn')?.setAttribute('aria-expanded', 'false');
+      return;
+    }
+
+    const openModalEl = document.querySelector('.modal-overlay.open');
+    if (openModalEl) {
+      UI.closeModal(openModalEl.id);
+    }
+  });
 
   // Hero Banner "View Analytics →" button
   const heroBtn = document.getElementById('hero-view-analytics-btn');
@@ -263,18 +307,16 @@ async function checkBackendHealth() {
     const health = await api.getHealth();
     state.health = health.data;
     if (statusPill) {
-      statusPill.innerHTML = `
-        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38b284;"></span>
-        <span style="font-size:0.75rem; font-weight:700; color:#38b284;">API Connected</span>
-      `;
+      statusPill.classList.remove('is-offline');
+      const label = statusPill.querySelector('.api-pill-label');
+      if (label) label.textContent = 'API Connected';
       statusPill.title = `Database: ${health.data?.database || 'connected'} | Uptime: ${Math.round(health.data?.uptime || 0)}s`;
     }
   } catch {
     if (statusPill) {
-      statusPill.innerHTML = `
-        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ff4757;"></span>
-        <span style="font-size:0.75rem; font-weight:700; color:#ff4757;">API Offline (${API_CONFIG.baseUrl})</span>
-      `;
+      statusPill.classList.add('is-offline');
+      const label = statusPill.querySelector('.api-pill-label');
+      if (label) label.textContent = `API Offline (${API_CONFIG.baseUrl})`;
       statusPill.title = 'Backend is unreachable or CORS blocked. Check server port.';
     }
   }
@@ -577,12 +619,19 @@ function renderRecentUsers(users = []) {
   const displayUsers = sorted.slice(0, 5);
   container.innerHTML = displayUsers.map((u, i) => UI.renderUserBadge(u, i)).join('');
 
-  // Bind click on badge to open details
+  // Bind click on badge to open details (mouse + keyboard)
   container.querySelectorAll('.user-clay-badge').forEach((badge) => {
-    badge.addEventListener('click', () => {
+    const openDetails = () => {
       const userId = badge.getAttribute('data-user-id');
       const user = state.users.find((u) => u.id === userId);
       if (user) openUserDetailsModal(user);
+    };
+    badge.addEventListener('click', openDetails);
+    badge.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openDetails();
+      }
     });
   });
 }
@@ -705,13 +754,13 @@ function renderUsersTable(users = []) {
       return `
       <tr>
         <td>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:36px; height:36px; border-radius:50%; background:${avatarColor}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700;">
+          <div class="table-user-cell">
+            <div class="table-user-avatar" style="background-color:${avatarColor};" aria-hidden="true">
               ${initial}
             </div>
             <div>
-              <div style="font-weight:700;">${u.name || 'Unnamed Lifter'}</div>
-              <div style="font-size:0.78rem; color:var(--text-muted);">${u.email}</div>
+              <div class="table-user-name">${u.name || 'Unnamed Lifter'}</div>
+              <div class="table-user-email">${u.email}</div>
             </div>
           </div>
         </td>
@@ -720,9 +769,7 @@ function renderUsersTable(users = []) {
         </td>
         <td>${regDate}</td>
         <td>
-          <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--pastel-mint); font-weight:700;">
-            ● Active
-          </span>
+          <span class="status-dot">Active</span>
         </td>
         <td>
           <div class="table-actions">
@@ -777,20 +824,20 @@ async function loadExercisesView() {
     container.innerHTML = state.exercises
       .map(
         (ex) => `
-        <div class="clay-card-sm" style="padding:18px; display:flex; flex-direction:column; gap:10px; cursor:pointer;" data-exercise-id="${ex.id}">
-          <div style="display:flex; justify-content:space-between; align-items:start;">
+        <div class="clay-card-sm exercise-card" role="button" tabindex="0" data-exercise-id="${ex.id}" aria-label="View details for ${ex.name}">
+          <div class="exercise-card-top">
             <div class="pastel-icon-badge purple" style="width:36px; height:36px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="m6.5 6.5 11 11"></path><path d="m21 21-1-1"></path>
               </svg>
             </div>
             <span class="role-badge user">${ex.movementPattern || 'Strength'}</span>
           </div>
           <div>
-            <h4 style="font-size:0.95rem; font-weight:800; color:var(--text-primary);">${ex.name}</h4>
-            <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;">Target: <strong>${ex.primaryMuscleGroup}</strong></p>
+            <h4>${ex.name}</h4>
+            <p class="exercise-target">Target: <strong>${ex.primaryMuscleGroup}</strong></p>
           </div>
-          <div style="margin-top:auto; font-size:0.75rem; color:var(--text-muted);">
+          <div class="exercise-meta">
             Equipment: ${ex.requiredEquipment}
           </div>
         </div>
@@ -799,10 +846,17 @@ async function loadExercisesView() {
       .join('');
 
     container.querySelectorAll('[data-exercise-id]').forEach((card) => {
-      card.addEventListener('click', () => {
+      const openDetails = () => {
         const eid = card.getAttribute('data-exercise-id');
         const exercise = state.exercises.find((e) => e.id === eid);
         if (exercise) openExerciseModal(exercise);
+      };
+      card.addEventListener('click', openDetails);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openDetails();
+        }
       });
     });
   } catch (err) {
@@ -826,26 +880,26 @@ async function loadWorkoutsView() {
     container.innerHTML = state.workouts
       .map(
         (w) => `
-        <div class="clay-card-sm" style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px;">
-          <div style="display:flex; align-items:center; gap:14px;">
+        <div class="clay-card-sm session-row">
+          <div class="session-row-left">
             <div class="pastel-icon-badge ${w.status === 'completed' ? 'mint' : 'purple'}">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="m6.5 6.5 11 11"></path><path d="m21 21-1-1"></path>
               </svg>
             </div>
             <div>
-              <h4 style="font-size:0.96rem; font-weight:800;">${w.notes || 'Workout Session'}</h4>
-              <p style="font-size:0.8rem; color:var(--text-secondary);">
-                Status: <strong style="text-transform:capitalize;">${w.status}</strong> 
-                ${w.perceivedRpe ? `• RPE: ${w.perceivedRpe}/10` : ''}
+              <h4>${w.notes || 'Workout Session'}</h4>
+              <p class="session-meta">
+                Status: <strong>${w.status}</strong>
+                ${w.perceivedRpe ? `&bull; RPE: ${w.perceivedRpe}/10` : ''}
               </p>
             </div>
           </div>
-          <div style="text-align:right;">
-            <div style="font-size:0.82rem; font-weight:700; color:var(--text-secondary);">
+          <div class="session-row-right">
+            <div class="session-date">
               ${new Date(w.startedAt).toLocaleDateString()}
             </div>
-            <div style="font-size:0.75rem; color:var(--text-muted);">${UI.timeAgo(w.startedAt)}</div>
+            <div class="session-ago">${UI.timeAgo(w.startedAt)}</div>
           </div>
         </div>
       `,
@@ -872,20 +926,20 @@ async function loadProgramsView() {
     container.innerHTML = state.programs
       .map(
         (p) => `
-        <div class="clay-card-sm" style="padding:22px; display:flex; flex-direction:column; gap:12px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="clay-card-sm program-card">
+          <div class="program-card-top">
             <span class="role-badge ${p.isActive ? 'admin' : 'user'}">
               ${p.isActive ? 'Active Program' : 'Inactive'}
             </span>
-            <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+            <span class="program-split">
               ${(p.splitType || '').replace(/_/g, ' ')}
             </span>
           </div>
-          <h3 style="font-size:1.15rem; font-weight:800;">${p.name}</h3>
-          <p style="font-size:0.85rem; color:var(--text-secondary);">
-            Duration: <strong>${p.durationWeeks} weeks</strong> • ${p.trainingDaysPerWeek} days/week
+          <h3>${p.name}</h3>
+          <p class="program-meta">
+            Duration: <strong>${p.durationWeeks} weeks</strong> &bull; ${p.trainingDaysPerWeek} days/week
           </p>
-          <div style="margin-top:auto; display:flex; gap:10px; padding-top:12px; border-top:1px solid rgba(0,0,0,0.06);">
+          <div class="program-card-footer">
             ${
               !p.isActive
                 ? `<button class="clay-pill-btn clay-pill-btn-white btn-activate-prog" data-id="${p.id}" style="padding:6px 14px; font-size:0.8rem;">Set Active</button>`
@@ -946,10 +1000,10 @@ async function loadAnalyticsView() {
       container.innerHTML = state.analyticsConsistency.weeklyBreakdown
         .map(
           (w) => `
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--bg-card-subtle); border-radius:12px;">
-            <span style="font-size:0.85rem; font-weight:700;">Week ${new Date(w.weekStart).toLocaleDateString()}</span>
-            <span style="font-size:0.82rem; font-weight:800; color:${w.metGoal ? 'var(--pastel-mint)' : 'var(--text-muted)'}">
-              ${w.workoutCount} workouts ${w.metGoal ? '✓' : ''}
+          <div class="consistency-row">
+            <span class="week-label">Week ${new Date(w.weekStart).toLocaleDateString()}</span>
+            <span class="week-count ${w.metGoal ? 'met' : ''}">
+              ${w.workoutCount} workouts${w.metGoal ? ' <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
             </span>
           </div>
         `,
@@ -1181,12 +1235,15 @@ function bindModals() {
 
   if (notifBtn && notifDrawer) {
     notifBtn.addEventListener('click', () => {
-      notifDrawer.classList.toggle('open');
+      const isOpen = notifDrawer.classList.toggle('open');
+      notifBtn.setAttribute('aria-expanded', String(isOpen));
     });
   }
   if (notifClose && notifDrawer) {
     notifClose.addEventListener('click', () => {
       notifDrawer.classList.remove('open');
+      notifBtn?.setAttribute('aria-expanded', 'false');
+      notifBtn?.focus();
     });
   }
 }
@@ -1280,14 +1337,25 @@ function bindProfileAndSettings() {
   const profileDropdown = document.getElementById('admin-profile-dropdown');
 
   if (profileMenuBtn && profileDropdown) {
-    profileMenuBtn.addEventListener('click', (e) => {
+    const toggleDropdown = (e) => {
       e.stopPropagation();
-      profileDropdown.style.display =
-        profileDropdown.style.display === 'block' ? 'none' : 'block';
+      const isOpen = profileDropdown.style.display === 'block';
+      profileDropdown.style.display = isOpen ? 'none' : 'block';
+      profileMenuBtn.setAttribute('aria-expanded', String(!isOpen));
+    };
+
+    profileMenuBtn.addEventListener('click', toggleDropdown);
+    profileMenuBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        toggleDropdown(e);
+      }
     });
 
-    document.addEventListener('click', () => {
-      profileDropdown.style.display = 'none';
+    document.addEventListener('click', (e) => {
+      if (!profileMenuBtn.contains(e.target)) {
+        profileDropdown.style.display = 'none';
+        profileMenuBtn.setAttribute('aria-expanded', 'false');
+      }
     });
   }
 

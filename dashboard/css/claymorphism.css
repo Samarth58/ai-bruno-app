@@ -7,13 +7,13 @@
 :root {
   /* Color Palette */
   --bg-app: #fcf5f2;
-  --bg-sidebar: #ff8581;
-  --bg-sidebar-gradient: linear-gradient(180deg, #ff8c88 0%, #ff7975 100%);
+  --bg-sidebar: #d1453f;
+  --bg-sidebar-gradient: linear-gradient(180deg, #d1453f 0%, #c23a36 100%);
   --bg-hero: linear-gradient(135deg, #ffc7c3 0%, #ffb6b1 50%, #ffa5a0 100%);
   --bg-card: #ffffff;
   --bg-card-subtle: #faf4f1;
 
-  /* Pastel Accents */
+  /* Pastel Accents (decorative fills: dots, badges, chart slices) */
   --pastel-coral: #ff7470;
   --pastel-coral-light: #ffecec;
   --pastel-coral-border: #ffd5d3;
@@ -34,12 +34,27 @@
   --pastel-blue-light: #e8f5fe;
   --pastel-blue-border: #cde6fb;
 
+  /* Ink variants (AA-compliant text/icon colors on white & pastel tints) */
+  --coral-ink: #c23a36;
+  --coral-action: #c23a36;
+  --coral-action-hover: #a9302c;
+  --purple-ink: #6b4fd6;
+  --amber-ink: #96650a;
+  --mint-ink: #1a7d57;
+  --blue-ink: #1a6fa8;
+  --danger-ink: #b3261e;
+  --danger-soft: #ffecec;
+
   /* Text & Neutral */
   --text-primary: #2d2627;
-  --text-secondary: #7e7374;
-  --text-muted: #aba0a1;
+  --text-secondary: #6b6162;
+  --text-muted: #746a6b;
   --text-light: #ffffff;
   --text-on-coral: #ffffff;
+
+  /* Focus */
+  --focus-ring-color: #c23a36;
+  --focus-ring-width: 3px;
 
   /* Clay Shadows & Inset Highlights */
   --clay-card-shadow: 
@@ -82,7 +97,7 @@
   --radius-avatar: 50%;
 
   /* Transitions */
-  --transition-clay: all 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+  --transition-clay: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   --transition-smooth: all 0.2s ease-in-out;
 }
 
@@ -102,6 +117,48 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   overflow-x: hidden;
+  caret-color: var(--coral-action);
+}
+
+::selection {
+  background: var(--pastel-coral-light);
+  color: var(--coral-ink);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Clay Surface Utility Classes */
@@ -138,7 +195,7 @@ body {
   cursor: pointer;
   border: none;
   text-decoration: none;
-  background: var(--pastel-coral);
+  background: var(--coral-action);
   color: var(--text-light);
   box-shadow: var(--clay-button-shadow);
   transition: var(--transition-clay);
@@ -147,18 +204,18 @@ body {
 
 .clay-pill-btn:hover {
   transform: translateY(-2px);
-  filter: brightness(1.03);
+  background: var(--coral-action-hover);
 }
 
 .clay-pill-btn:active {
   transform: translateY(1px);
-  box-shadow: 0 4px 8px rgba(255, 110, 105, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 8px rgba(180, 50, 50, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .clay-pill-btn-white {
   background: #ffffff;
-  color: var(--pastel-coral);
-  box-shadow: 
+  color: var(--coral-ink);
+  box-shadow:
     0 8px 16px rgba(220, 120, 120, 0.2),
     inset 0 2px 3px rgba(255, 255, 255, 1),
     inset 0 -2px 4px rgba(230, 160, 160, 0.12);
@@ -185,11 +242,13 @@ body {
   transition: var(--transition-smooth);
 }
 
-.clay-input:focus {
-  border-color: var(--pastel-coral);
-  box-shadow: 
+.clay-input:focus,
+.clay-input:focus-visible {
+  border-color: var(--coral-action);
+  outline: none;
+  box-shadow:
     inset 0 2px 5px rgba(255, 120, 120, 0.15),
-    0 0 0 3px rgba(255, 130, 125, 0.2);
+    0 0 0 3px rgba(194, 58, 54, 0.22);
 }
 
 /* Icon Badges */
@@ -206,32 +265,38 @@ body {
 
 .pastel-icon-badge.coral {
   background: var(--pastel-coral-light);
-  color: var(--pastel-coral);
+  color: var(--coral-ink);
   border: 1px solid var(--pastel-coral-border);
 }
 
 .pastel-icon-badge.purple {
   background: var(--pastel-purple-light);
-  color: var(--pastel-purple);
+  color: var(--purple-ink);
   border: 1px solid var(--pastel-purple-border);
 }
 
 .pastel-icon-badge.yellow {
   background: var(--pastel-yellow-light);
-  color: var(--pastel-yellow);
+  color: var(--amber-ink);
   border: 1px solid var(--pastel-yellow-border);
 }
 
 .pastel-icon-badge.mint {
   background: var(--pastel-mint-light);
-  color: var(--pastel-mint);
+  color: var(--mint-ink);
   border: 1px solid var(--pastel-mint-border);
 }
 
 .pastel-icon-badge.blue {
   background: var(--pastel-blue-light);
-  color: var(--pastel-blue);
+  color: var(--blue-ink);
   border: 1px solid var(--pastel-blue-border);
+}
+
+.pastel-icon-badge svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
 }
 
 /* Custom Scrollbars */
@@ -251,4 +316,28 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #e2beba;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .clay-card:hover,
+  .clay-pill-btn:hover,
+  .clay-pill-btn:active,
+  .hero-btn:hover,
+  .notification-btn:hover,
+  .admin-profile:hover,
+  .action-tile:hover,
+  .user-clay-badge:hover,
+  .nav-link:hover {
+    transform: none;
+  }
 }

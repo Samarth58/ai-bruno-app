@@ -56,7 +56,12 @@ export const UI = {
     const sparkSvg = ChartEngine.createSparklineSvg(sparklineData || [10, 15, 12, 22, 18, 30, 28], color);
     const trendHtml = trend
       ? `<span class="kpi-trend ${trendDirection === 'down' ? 'negative' : ''}">
-          ${trendDirection === 'up' ? '↑' : '↓'} ${trend}
+          ${
+            trendDirection === 'down'
+              ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>'
+              : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"></polyline></svg>'
+          }
+          <span>${trend}</span>
          </span>`
       : '';
 
@@ -89,8 +94,8 @@ export const UI = {
     const roleLabel = user.role === 'admin' ? 'Administrator' : 'Lifter';
 
     return `
-      <div class="user-clay-badge" data-user-id="${user.id}" title="${user.email}">
-        <div class="user-clay-avatar" style="background-color: ${avatarColor};">
+      <div class="user-clay-badge" data-user-id="${user.id}" title="${user.email}" role="button" tabindex="0" aria-label="View details for ${displayName}">
+        <div class="user-clay-avatar" style="background-color: ${avatarColor};" aria-hidden="true">
           ${initial}
         </div>
         <div class="user-clay-name">${displayName}</div>
@@ -124,7 +129,11 @@ export const UI = {
         </div>
         <div class="workout-right">
           <span class="workout-time">${timeStr}</span>
-          <div class="workout-check-icon">✓</div>
+          <div class="workout-check-icon" aria-label="Completed" role="img">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
         </div>
       </div>
     `;
@@ -146,8 +155,8 @@ export const UI = {
     return `
       <div class="activity-item" data-id="${dataId || ''}">
         <div class="activity-left">
-          <div class="pastel-icon-badge ${badge.class}" style="width: 36px; height: 36px; border-radius: 12px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <div class="pastel-icon-badge ${badge.class}" style="width: 36px; height: 36px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               ${badge.icon}
             </svg>
           </div>
@@ -158,7 +167,9 @@ export const UI = {
         </div>
         <div class="activity-right">
           <span>${timeStr}</span>
-          <span>›</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
         </div>
       </div>
     `;
@@ -173,13 +184,24 @@ export const UI = {
       container = document.createElement('div');
       container.id = 'toast-container';
       container.className = 'toast-container';
+      container.setAttribute('aria-live', 'polite');
+      container.setAttribute('aria-atomic', 'false');
       document.body.appendChild(container);
     }
 
+    const icons = {
+      success:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+      error:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+      info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+    };
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
     toast.innerHTML = `
-      <span>${type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ'}</span>
+      <span class="toast-icon">${icons[type] || icons.info}</span>
       <span>${message}</span>
     `;
 
@@ -194,13 +216,18 @@ export const UI = {
   },
 
   /**
-   * Modal Open / Close Helpers
+   * Modal Open / Close Helpers (with focus management)
    */
   openModal: (modalId) => {
     const modal = document.getElementById(modalId);
     if (modal) {
+      modal.dataset.returnFocusTo = document.activeElement?.id || '';
       modal.classList.add('open');
       document.body.style.overflow = 'hidden';
+
+      const firstField = modal.querySelector('input, select, textarea');
+      const closeBtn = modal.querySelector('.modal-close-btn');
+      (firstField || closeBtn || modal.querySelector('.modal-card'))?.focus?.();
     }
   },
 
@@ -209,6 +236,12 @@ export const UI = {
     if (modal) {
       modal.classList.remove('open');
       document.body.style.overflow = '';
+
+      const returnFocusId = modal.dataset.returnFocusTo;
+      if (returnFocusId) {
+        document.getElementById(returnFocusId)?.focus?.();
+        delete modal.dataset.returnFocusTo;
+      }
     }
   },
 };
