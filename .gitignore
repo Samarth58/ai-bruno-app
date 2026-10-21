@@ -37,3 +37,7 @@ Thumbs.db
 # IDE & AI Assistant state
 .agents/
 .gemini/
+
+# Mobile / Expo cache
+.expo/
+
