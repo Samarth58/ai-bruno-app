@@ -5,7 +5,7 @@ import { BorderRadius, Colors, Spacing } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
 export default function IndexGate() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isOnboardingCompleted } = useAuth();
 
   if (isLoading) {
     return (
@@ -24,6 +24,9 @@ export default function IndexGate() {
   }
 
   if (isAuthenticated) {
+    if (isOnboardingCompleted === false) {
+      return <Redirect href="/onboarding" />;
+    }
     return <Redirect href="/(tabs)" />;
   }
 

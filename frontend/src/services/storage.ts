@@ -58,4 +58,5 @@ export const AUTH_KEYS = {
   ACCESS_TOKEN: 'bruno_access_token',
   REFRESH_TOKEN: 'bruno_refresh_token',
   USER_DATA: 'bruno_user_data',
-};
+  ONBOARDING_COMPLETED: 'bruno_onboarding_completed',
+} as const;

@@ -42,8 +42,12 @@ export default function LoginScreen() {
     setErrorMessage(null);
 
     try {
-      await login(email.trim(), password);
-      router.replace('/(tabs)');
+      const isComplete = await login(email.trim(), password);
+      if (isComplete) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/onboarding');
+      }
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);

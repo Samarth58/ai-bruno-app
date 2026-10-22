@@ -30,27 +30,30 @@ export default function WelcomeScreen() {
 
         {/* 3D Bruno Mascot Hero Box */}
         <View style={styles.heroBox}>
-          <View style={styles.statusPill}>
-            <View style={styles.greenPulse} />
-            <Text style={styles.statusText}>READY TO LIFT</Text>
+          <View style={styles.heroHeaderRow}>
+            <View style={styles.versionPill}>
+              <Text style={styles.versionText}>BRUNO v2.4</Text>
+            </View>
+            <View style={styles.statusPill}>
+              <View style={styles.greenPulse} />
+              <Text style={styles.statusText}>READY TO LIFT</Text>
+            </View>
           </View>
 
-          <View style={styles.versionPill}>
-            <Text style={styles.versionText}>BRUNO v2.4</Text>
+          <View style={styles.mascotContainer}>
+            <Image
+              source={require('@/assets/images/bruno-mascot.png')}
+              style={styles.mascotImage}
+              resizeMode="contain"
+            />
           </View>
-
-          <Image
-            source={require('@/assets/images/bruno-mascot.png')}
-            style={styles.mascotImage}
-            resizeMode="contain"
-          />
 
           <View style={styles.quoteCard}>
             <View style={styles.quoteIconBox}>
               <Text style={styles.quoteIcon}>💬</Text>
             </View>
             <Text style={styles.quoteText}>
-              “Chalk up, buddy! I already mapped your warmup sets.”
+              “Chalk up, buddy! I'll build your equipment-tailored lifting cycle.”
             </Text>
           </View>
         </View>
@@ -131,6 +134,9 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.base,
     paddingBottom: Spacing.xxl,
     alignItems: 'center',
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerPill: {
     flexDirection: 'row',
@@ -168,30 +174,30 @@ const styles = StyleSheet.create({
   },
   heroBox: {
     width: '100%',
-    height: 320,
     backgroundColor: Colors.canvasBase,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
+    padding: Spacing.base,
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-    position: 'relative',
     ...Shadows.card,
     marginBottom: Spacing.base,
   },
+  heroHeaderRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
   statusPill: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: Colors.surfaceContainerLow,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: BorderRadius.full,
-    zIndex: 10,
   },
   greenPulse: {
     width: 8,
@@ -205,36 +211,37 @@ const styles = StyleSheet.create({
     color: Colors.charcoalDark,
   },
   versionPill: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
     backgroundColor: Colors.coachOrangeSubtle,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: BorderRadius.full,
-    zIndex: 10,
   },
   versionText: {
     fontSize: 10,
     fontWeight: '700',
     color: Colors.coachOrange,
   },
+  mascotContainer: {
+    width: '100%',
+    height: 190,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: Spacing.xs,
+  },
   mascotImage: {
     width: '100%',
-    height: 250,
+    height: '100%',
   },
   quoteCard: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    right: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    width: '100%',
+    backgroundColor: Colors.surfaceContainerLow,
     borderRadius: BorderRadius.md,
     padding: Spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    ...Shadows.card,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
   },
   quoteIconBox: {
     width: 28,
@@ -250,6 +257,7 @@ const styles = StyleSheet.create({
   quoteText: {
     flex: 1,
     fontSize: 12,
+    lineHeight: 16,
     color: Colors.charcoalDark,
     fontWeight: '500',
   },

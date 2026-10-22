@@ -88,6 +88,23 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
+        {/* Bruno AI Consultation & Program Setup */}
+        <Text style={styles.sectionHeader}>Bruno AI Consultation</Text>
+        <Card style={styles.menuCard}>
+          <Pressable onPress={() => router.push('/onboarding')} style={styles.menuRow}>
+            <View style={[styles.menuIconCircle, { backgroundColor: Colors.coachOrangeSubtle }]}>
+              <Text style={styles.menuIcon}>🤖</Text>
+            </View>
+            <View style={styles.menuTextCol}>
+              <Text style={styles.menuTitle}>Re-run Bruno's Questionnaire</Text>
+              <Text style={styles.menuSubtitle}>
+                Update fitness goals, equipment & regenerate lifting cycle
+              </Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        </Card>
+
         {/* Gym Hardware Setup Section */}
         <Text style={styles.sectionHeader}>Gym Hardware Profile</Text>
         <Card style={styles.menuCard}>

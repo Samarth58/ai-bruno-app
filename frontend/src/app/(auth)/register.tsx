@@ -52,7 +52,7 @@ export default function RegisterScreen() {
 
     try {
       await register(email.trim(), password, name.trim());
-      router.replace('/(tabs)');
+      router.replace('/onboarding');
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);

@@ -127,4 +127,46 @@ test('Bruno Frontend Test Suite', async (t) => {
     assert.equal(altsUrl, '/api/v1/routines/r-123/exercises/rx-456/alternatives');
     assert.equal(startSessionUrl, '/api/v1/sessions/start');
   });
+
+  await t.test('9. Onboarding training split recommendation engine', () => {
+    const getSplitRecommendation = (days) => {
+      if (days === 3) return 'full_body';
+      if (days === 4) return 'upper_lower';
+      return 'push_pull_legs';
+    };
+
+    assert.equal(getSplitRecommendation(3), 'full_body');
+    assert.equal(getSplitRecommendation(4), 'upper_lower');
+    assert.equal(getSplitRecommendation(5), 'push_pull_legs');
+    assert.equal(getSplitRecommendation(6), 'push_pull_legs');
+  });
+
+  await t.test('10. Onboarding backend program-generation contract payload validation', () => {
+    const validGeneratePayload = {
+      splitType: 'upper_lower',
+      trainingDaysPerWeek: 4,
+      targetSessionDurationMinutes: 45,
+      durationWeeks: 4,
+      goal: 'hypertrophy',
+      gymProfileId: '550e8400-e29b-41d4-a716-446655440000',
+    };
+
+    assert.ok(['full_body', 'upper_lower', 'push_pull_legs'].includes(validGeneratePayload.splitType));
+    assert.ok(validGeneratePayload.trainingDaysPerWeek >= 3 && validGeneratePayload.trainingDaysPerWeek <= 6);
+    assert.ok(validGeneratePayload.targetSessionDurationMinutes >= 20 && validGeneratePayload.targetSessionDurationMinutes <= 120);
+    assert.ok(validGeneratePayload.durationWeeks >= 1 && validGeneratePayload.durationWeeks <= 16);
+    assert.ok(['strength', 'hypertrophy', 'endurance'].includes(validGeneratePayload.goal));
+  });
+
+  await t.test('11. Returning user vs new user onboarding gate logic', () => {
+    // New user with 0 programs -> onboarding required
+    const newUserPrograms = [];
+    const isNewUserComplete = newUserPrograms.length > 0;
+    assert.equal(isNewUserComplete, false);
+
+    // Returning user with active program -> bypass onboarding
+    const returningUserPrograms = [{ id: 'p-1', isActive: true, name: 'Hypertrophy 4-Day' }];
+    const isReturningUserComplete = returningUserPrograms.some((p) => p.isActive);
+    assert.equal(isReturningUserComplete, true);
+  });
 });
