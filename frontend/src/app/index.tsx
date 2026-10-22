@@ -1,98 +1,71 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import { BorderRadius, Colors, Spacing } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function IndexGate() {
+  const { isAuthenticated, isLoading } = useAuth();
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
+  if (isLoading) {
     return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
+      <View style={styles.splashContainer}>
+        <View style={styles.mascotCircle}>
+          <Image
+            source={require('@/assets/images/bruno-coach-avatar.png')}
+            style={styles.mascotImg}
+          />
+        </View>
+        <Text style={styles.brandTitle}>Bruno AI Gym Buddy</Text>
+        <Text style={styles.brandSubtitle}>Intelligent Telemetry & Biomechanical Coaching</Text>
+        <ActivityIndicator size="small" color={Colors.primary} style={styles.loader} />
+      </View>
     );
   }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+  if (isAuthenticated) {
+    return <Redirect href="/(tabs)" />;
+  }
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
+  return <Redirect href="/(auth)/welcome" />;
 }
 
 const styles = StyleSheet.create({
-  container: {
+  splashContainer: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    backgroundColor: Colors.background,
+    padding: Spacing.xl,
   },
-  title: {
+  mascotCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: BorderRadius.full,
+    overflow: 'hidden',
+    backgroundColor: Colors.coachOrangeSubtle,
+    borderWidth: 2.5,
+    borderColor: Colors.coachOrange,
+    marginBottom: Spacing.base,
+  },
+  mascotImg: {
+    width: '100%',
+    height: '100%',
+  },
+  brandTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: Colors.charcoalDark,
+    marginBottom: 4,
+  },
+  brandSubtitle: {
+    fontSize: 13,
+    color: Colors.slateBody,
     textAlign: 'center',
+    maxWidth: 260,
+    lineHeight: 18,
   },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  loader: {
+    marginTop: Spacing.xl,
   },
 });

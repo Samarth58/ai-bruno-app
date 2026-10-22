@@ -7,7 +7,8 @@ import {
   findAllActiveExercises,
   findExerciseById,
 } from '../exercises/exercises.repository.js';
-import { findDefaultGymProfile,
+import {
+  findDefaultGymProfile,
   findGymProfileById,
   findGymProfilesByUserId,
 } from '../gymProfiles/gymProfiles.repository.js';
@@ -99,18 +100,18 @@ export async function generatePersonalizedProgram(
   // 4. Resolve Baseline Strength Benchmarks (explicit inputs + historical workout logs)
   const historicalBaselines = await findUserHistoricalBaselines(userId);
   const resolvedBaselines = resolveUserBaselineBenchmarks(
-    input.baselineLifts,
-    historicalBaselines,
-  );
+  input.baselineLifts,
+  historicalBaselines,
+);
 
   // 5. Run Algorithmic Generation with Baseline Seeding
   const plan = generateWorkoutProgramPlan({
-    input,
-    exercises: allExercises,
-    gymProfile,
-    activeConstraints,
-    baselines: resolvedBaselines,
-  });
+  input,
+  exercises: allExercises,
+  gymProfile,
+  activeConstraints,
+  baselines: resolvedBaselines,
+});
 
   // 6. Persist Atomically
   return await insertProgramWithPlan(userId, plan);
@@ -512,10 +513,10 @@ export async function getSmartSwapAlternatives(
     },
     gymProfile: gymProfile
       ? {
-          id: gymProfile.id,
-          name: gymProfile.name,
-          environmentType: gymProfile.environmentType,
-        }
+        id: gymProfile.id,
+        name: gymProfile.name,
+        environmentType: gymProfile.environmentType,
+      }
       : null,
     activeConstraintsCount: activeConstraints.length,
     alternatives,
