@@ -17,6 +17,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Header } from '../../components/ui/Header';
+import { BRUNO_IMAGES } from '../../constants/images';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { api, ApiError } from '../../services/api';
@@ -30,10 +31,11 @@ interface ChatMessage {
 }
 
 const QUICK_PROMPTS = [
-  'How is my weekly volume & consistency?',
-  'Suggest warmup sets for bench press',
-  'My shoulders feel tight today',
-  'Can you swap machine hack squats for leg press?',
+  'How do I calculate warmup sets for 25kg dumbbells?',
+  'What if the incline benches are taken today?',
+  'Should I take a deload week next week?',
+  'Check my weekly volume balance (MAV)',
+  'My shoulders feel tight today from overhead pressing',
 ];
 
 export default function CoachScreen() {
@@ -161,7 +163,7 @@ export default function CoachScreen() {
                 {isBruno ? (
                   <View style={styles.brunoAvatarWrapper}>
                     <Image
-                      source={require('@/assets/images/bruno-coach-avatar.png')}
+                      source={BRUNO_IMAGES.LOGIN_BRUNO}
                       style={styles.brunoAvatar}
                     />
                   </View>

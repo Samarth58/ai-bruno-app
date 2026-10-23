@@ -1,5 +1,6 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { BRUNO_IMAGES } from '../../constants/images';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../constants/theme';
 import { Badge } from './Badge';
 
@@ -39,17 +40,18 @@ export function BrunoMascotCard({
       <View style={styles.contentRow}>
         <View style={styles.avatarWrapper}>
           <Image
-            source={require('@/assets/images/bruno-coach-avatar.png')}
+            source={BRUNO_IMAGES.HOME_COACH}
             style={styles.avatarImage}
             resizeMode="cover"
           />
           <View style={styles.coachTag}>
-            <Text style={styles.coachTagText}>COACH</Text>
+            <Text style={styles.coachTagText}>LOG</Text>
           </View>
         </View>
 
         {/* Speech Bubble */}
         <View style={styles.speechBubble}>
+          <View style={styles.speechPointer} />
           <Text style={styles.speechText}>
             {speechText}
           </Text>
@@ -146,7 +148,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.canvasBase,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: Colors.border,
     ...Shadows.card,
+  },
+  speechPointer: {
+    position: 'absolute',
+    left: -6,
+    top: 20,
+    width: 12,
+    height: 12,
+    backgroundColor: Colors.canvasBase,
+    transform: [{ rotate: '45deg' }],
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
   },
   speechText: {
     fontSize: 13,

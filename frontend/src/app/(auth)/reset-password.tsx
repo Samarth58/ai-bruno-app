@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,7 +15,8 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Input } from '../../components/ui/Input';
-import { BorderRadius, Colors, Spacing } from '../../constants/theme';
+import { BRUNO_IMAGES } from '../../constants/images';
+import { BorderRadius, Colors, Shadows, Spacing } from '../../constants/theme';
 import { api, ApiError } from '../../services/api';
 
 export default function ResetPasswordScreen() {
@@ -63,15 +65,23 @@ export default function ResetPasswordScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.successContainer}>
-          <View style={styles.successIconCircle}>
-            <Text style={styles.successCheck}>✓</Text>
+          <View style={styles.successAvatarWrapper}>
+            <Image
+              source={BRUNO_IMAGES.PASSWORD_SUCCESS_BRUNO}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+            <View style={styles.avatarBadge}>
+              <Text style={styles.avatarBadgeIcon}>✓</Text>
+            </View>
           </View>
-          <Text style={styles.successTitle}>Password Updated!</Text>
+
+          <Text style={styles.successTitle}>All Set & Locked In!</Text>
           <Text style={styles.successDesc}>
-            Your Bruno AI Gym Buddy account password has been reset successfully.
+            Your credentials have been updated. Coach Bruno is ready to track your next session.
           </Text>
           <Button
-            title="Log In With New Password"
+            title="Return to Power Up"
             onPress={() => router.replace('/(auth)/login')}
             variant="primary"
             size="lg"
@@ -88,19 +98,37 @@ export default function ResetPasswordScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.badgePill}>
-              <Text style={styles.badgeText}>STEP 3 OF 3</Text>
+          {/* Coach Bruno Create Password Unit */}
+          <View style={styles.coachWelcomeCard}>
+            <View style={styles.avatarWrapper}>
+              <Image
+                source={BRUNO_IMAGES.CREATE_PASSWORD_BRUNO}
+                style={styles.avatar}
+                resizeMode="cover"
+              />
+              <View style={styles.avatarBadge}>
+                <Text style={styles.avatarBadgeIcon}>🔒</Text>
+              </View>
             </View>
-            <Text style={styles.title}>Create New Password</Text>
-            <Text style={styles.subtitle}>
-              Choose a strong password with at least 8 characters.
-            </Text>
+            <View style={styles.speechCol}>
+              <View style={styles.coachHeaderRow}>
+                <Text style={styles.coachName}>COACH BRUNO</Text>
+                <View style={styles.greenPulse} />
+              </View>
+              <Text style={styles.coachSpeech}>
+                “Set a solid lock. Min 8 chars with an uppercase & symbol.”
+              </Text>
+            </View>
           </View>
 
           {/* Form Card */}
           <Card style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.title}>Create New Password</Text>
+              <Text style={styles.subtitle}>
+                Choose a strong password with at least 8 characters.
+              </Text>
+            </View>
             {errorMessage ? (
               <ErrorBanner
                 message={errorMessage}
@@ -158,35 +186,90 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.xxl,
   },
-  header: {
+  coachWelcomeCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.xl,
+    gap: Spacing.md,
+    backgroundColor: Colors.canvasBase,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.lg,
+    ...Shadows.card,
   },
-  badgePill: {
-    backgroundColor: Colors.primarySubtle,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 4,
+  avatarWrapper: {
+    width: 64,
+    height: 64,
     borderRadius: BorderRadius.full,
-    marginBottom: Spacing.sm,
+    padding: 3,
+    backgroundColor: Colors.coachOrange,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  badgeText: {
-    fontSize: 11,
+  avatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.coachOrangeSubtle,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.canvasBase,
+  },
+  avatarBadgeIcon: {
+    fontSize: 10,
+  },
+  speechCol: {
+    flex: 1,
+    gap: 2,
+  },
+  coachHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coachName: {
+    fontSize: 10,
     fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: 0.5,
+    color: Colors.coachOrange,
+    letterSpacing: 0.8,
+  },
+  greenPulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+  coachSpeech: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.charcoalDark,
+    lineHeight: 18,
+  },
+  cardHeader: {
+    marginBottom: Spacing.base,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: Colors.charcoalDark,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.slateBody,
-    textAlign: 'center',
-    maxWidth: 300,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   card: {
     padding: Spacing.xl,
@@ -210,19 +293,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: Spacing.xl,
   },
-  successIconCircle: {
-    width: 80,
-    height: 80,
+  successAvatarWrapper: {
+    width: 96,
+    height: 96,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primarySubtle,
+    padding: 4,
+    backgroundColor: Colors.primary,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
-  },
-  successCheck: {
-    fontSize: 36,
-    color: Colors.primary,
-    fontWeight: '700',
   },
   successTitle: {
     fontSize: 24,

@@ -15,7 +15,8 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Input } from '../../components/ui/Input';
-import { BorderRadius, Colors, Spacing } from '../../constants/theme';
+import { BRUNO_IMAGES } from '../../constants/images';
+import { BorderRadius, Colors, Shadows, Spacing } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { ApiError } from '../../services/api';
 
@@ -67,22 +68,38 @@ export default function LoginScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View style={styles.header}>
+          {/* Coach Bruno Welcome Unit */}
+          <View style={styles.coachWelcomeCard}>
             <View style={styles.avatarWrapper}>
               <Image
-                source={require('@/assets/images/bruno-coach-avatar.png')}
+                source={BRUNO_IMAGES.LOGIN_BRUNO}
                 style={styles.avatar}
+                resizeMode="cover"
               />
+              <View style={styles.avatarBadge}>
+                <Text style={styles.avatarBadgeIcon}>🏋️</Text>
+              </View>
             </View>
-            <Text style={styles.title}>Welcome Back!</Text>
-            <Text style={styles.subtitle}>
-              Sign in to sync your active workout cycle & Bruno coaching plan.
-            </Text>
+            <View style={styles.speechCol}>
+              <View style={styles.coachHeaderRow}>
+                <Text style={styles.coachName}>COACH BRUNO</Text>
+                <View style={styles.greenPulse} />
+              </View>
+              <Text style={styles.coachSpeech}>
+                “Welcome back, lifter! Ready to hit the iron?”
+              </Text>
+            </View>
           </View>
 
           {/* Form Card */}
           <Card style={styles.formCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.title}>Power Up</Text>
+              <Text style={styles.subtitle}>
+                Track workouts, sync with your coach, and break records.
+              </Text>
+            </View>
+
             {errorMessage ? (
               <ErrorBanner
                 message={errorMessage}
@@ -127,7 +144,7 @@ export default function LoginScreen() {
           <View style={styles.footer}>
             <Text style={styles.footerText}>New to Bruno?</Text>
             <Pressable onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.footerLink}>Create an account</Text>
+              <Text style={styles.footerLink}>Join the Rack</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -149,35 +166,90 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.xxl,
   },
-  header: {
+  coachWelcomeCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.xl,
+    gap: Spacing.md,
+    backgroundColor: Colors.canvasBase,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.lg,
+    ...Shadows.card,
   },
   avatarWrapper: {
-    width: 72,
-    height: 72,
+    width: 64,
+    height: 64,
     borderRadius: BorderRadius.full,
-    overflow: 'hidden',
-    backgroundColor: Colors.coachOrangeSubtle,
-    borderWidth: 2,
-    borderColor: Colors.coachOrange,
-    marginBottom: Spacing.md,
+    padding: 3,
+    backgroundColor: Colors.coachOrange,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatar: {
     width: '100%',
     height: '100%',
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.coachOrangeSubtle,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.canvasBase,
+  },
+  avatarBadgeIcon: {
+    fontSize: 10,
+  },
+  speechCol: {
+    flex: 1,
+    gap: 2,
+  },
+  coachHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coachName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.coachOrange,
+    letterSpacing: 0.8,
+  },
+  greenPulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+  coachSpeech: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.charcoalDark,
+    lineHeight: 18,
+  },
+  cardHeader: {
+    marginBottom: Spacing.base,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: Colors.charcoalDark,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.slateBody,
-    textAlign: 'center',
-    maxWidth: 290,
+    lineHeight: 18,
   },
   formCard: {
     padding: Spacing.xl,

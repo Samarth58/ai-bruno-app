@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Button } from '../../components/ui/Button';
+import { BRUNO_IMAGES } from '../../constants/images';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../constants/theme';
 
 export default function WelcomeScreen() {
@@ -42,7 +43,7 @@ export default function WelcomeScreen() {
 
           <View style={styles.mascotContainer}>
             <Image
-              source={require('@/assets/images/bruno-mascot.png')}
+              source={BRUNO_IMAGES.WELCOME_HERO}
               style={styles.mascotImage}
               resizeMode="contain"
             />

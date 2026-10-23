@@ -1,0 +1,6 @@
+{
+  "name": "Bruno AI - The Lifter's AI Gym Companion",
+  "description": "Autonomous biomechanical programming and strength telemetry with Coach Bruno. Real-time workout tracking, progressive overload, and intelligent gym equipment swapping.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

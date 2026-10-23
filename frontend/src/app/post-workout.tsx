@@ -16,7 +16,8 @@ import { Card } from '../components/ui/Card';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Header } from '../components/ui/Header';
 import { Input } from '../components/ui/Input';
-import { BorderRadius, Colors, Spacing } from '../constants/theme';
+import { BRUNO_IMAGES } from '../constants/images';
+import { BorderRadius, Colors, Shadows, Spacing } from '../constants/theme';
 import { api, ApiError } from '../services/api';
 
 const RPE_LEVELS = [
@@ -73,7 +74,7 @@ export default function PostWorkoutScreen() {
         <View style={styles.celebrationContainer}>
           <View style={styles.mascotCircle}>
             <Image
-              source={require('@/assets/images/bruno-mascot.png')}
+              source={BRUNO_IMAGES.WORKOUT_COMPLETE}
               style={styles.mascotImg}
               resizeMode="contain"
             />
@@ -120,6 +121,29 @@ export default function PostWorkoutScreen() {
           {errorMessage ? (
             <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage(null)} />
           ) : null}
+
+          {/* Coach Bruno Debrief Unit */}
+          <View style={styles.coachWelcomeCard}>
+            <View style={styles.avatarWrapper}>
+              <Image
+                source={BRUNO_IMAGES.WORKOUT_COMPLETE}
+                style={styles.avatar}
+                resizeMode="cover"
+              />
+              <View style={styles.avatarBadge}>
+                <Text style={styles.avatarBadgeIcon}>⚡</Text>
+              </View>
+            </View>
+            <View style={styles.speechCol}>
+              <View style={styles.coachHeaderRow}>
+                <Text style={styles.coachName}>COACH BRUNO</Text>
+                <View style={styles.greenPulse} />
+              </View>
+              <Text style={styles.coachSpeech}>
+                “Outstanding execution today! Rate your session so I can calibrate next workout's micro-loads.”
+              </Text>
+            </View>
+          </View>
 
           {/* RPE Rating Card */}
           <Card style={styles.card}>
@@ -380,5 +404,76 @@ const styles = StyleSheet.create({
   },
   returnBtn: {
     width: '100%',
+  },
+  coachWelcomeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.canvasBase,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+    ...Shadows.card,
+  },
+  avatarWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.full,
+    padding: 3,
+    backgroundColor: Colors.coachOrange,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.coachOrangeSubtle,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.canvasBase,
+  },
+  avatarBadgeIcon: {
+    fontSize: 10,
+  },
+  speechCol: {
+    flex: 1,
+    gap: 2,
+  },
+  coachHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coachName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.coachOrange,
+    letterSpacing: 0.8,
+  },
+  greenPulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+  coachSpeech: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.charcoalDark,
+    lineHeight: 18,
   },
 });

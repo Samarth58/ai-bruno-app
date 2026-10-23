@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -20,6 +21,7 @@ import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Header } from '../../components/ui/Header';
+import { BRUNO_IMAGES } from '../../constants/images';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../constants/theme';
 import { api, ApiError } from '../../services/api';
 import type {
@@ -52,6 +54,28 @@ export default function WorkoutScreen() {
   const [inputRpe, setInputRpe] = useState('8');
   const [isWarmup, setIsWarmup] = useState(false);
   const [setModalVisible, setSetModalVisible] = useState(false);
+
+  // Rest Timer State
+  const [restSecondsRemaining, setRestSecondsRemaining] = useState<number>(0);
+  const [isRestActive, setIsRestActive] = useState<boolean>(false);
+  const [coachCue, setCoachCue] = useState<string>(
+    'Keep elbows tucked at 45°. Slow 3-second eccentric descent on every single rep—pack that upper chest!'
+  );
+
+  // Rest Countdown Effect
+  useEffect(() => {
+    if (!isRestActive || restSecondsRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setRestSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          setIsRestActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRestActive, restSecondsRemaining]);
 
   // 1-Tap Machine Swap Modal
   const [swapModalVisible, setSwapModalVisible] = useState(false);
@@ -146,6 +170,9 @@ export default function WorkoutScreen() {
       });
 
       setSetModalVisible(false);
+      setRestSecondsRemaining(120);
+      setIsRestActive(true);
+      setCoachCue('Terrific tempo! Take your 2 minutes. Hydrate and get your mind ready for the next set.');
       await fetchSession();
     } catch (err: unknown) {
       if (err instanceof ApiError) {
@@ -322,6 +349,68 @@ export default function WorkoutScreen() {
                 />
               </View>
             </Card>
+
+            {/* Live Rest Timer HUD (MockupFlow Screen 3) */}
+            {isRestActive ? (
+              <Card style={styles.restTimerCard}>
+                <View style={styles.restTimerHeader}>
+                  <View style={styles.restTimerTitleRow}>
+                    <Text style={styles.restTimerEmoji}>⏱️</Text>
+                    <Text style={styles.restTimerTitle}>Active Rest Period</Text>
+                  </View>
+                  <Text style={styles.restTimerDigits}>
+                    {Math.floor(restSecondsRemaining / 60)}:{String(restSecondsRemaining % 60).padStart(2, '0')}
+                  </Text>
+                </View>
+
+                {/* Progress Bar */}
+                <View style={styles.restProgressBarTrack}>
+                  <View
+                    style={[
+                      styles.restProgressBarFill,
+                      { width: `${Math.min(100, Math.max(0, (restSecondsRemaining / 120) * 100))}%` },
+                    ]}
+                  />
+                </View>
+
+                <View style={styles.restActionsRow}>
+                  <Pressable
+                    onPress={() => setRestSecondsRemaining((prev) => prev + 30)}
+                    style={styles.restActionBtn}>
+                    <Text style={styles.restActionText}>+30s Rest</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setRestSecondsRemaining(0);
+                      setIsRestActive(false);
+                    }}
+                    style={[styles.restActionBtn, styles.restSkipBtn]}>
+                    <Text style={styles.restSkipText}>Skip Rest</Text>
+                  </Pressable>
+                </View>
+              </Card>
+            ) : null}
+
+            {/* Coach Bruno Active Cue Banner */}
+            <View style={styles.coachCueCard}>
+              <View style={styles.avatarWrapper}>
+                <Image
+                  source={BRUNO_IMAGES.ACTIVE_WORKOUT}
+                  style={styles.avatar}
+                  resizeMode="cover"
+                />
+                <View style={styles.avatarBadge}>
+                  <Text style={styles.avatarBadgeIcon}>🎙️</Text>
+                </View>
+              </View>
+              <View style={styles.speechCol}>
+                <View style={styles.coachHeaderRow}>
+                  <Text style={styles.coachName}>COACH BRUNO • LIVE CUE</Text>
+                  <View style={styles.greenPulse} />
+                </View>
+                <Text style={styles.coachSpeech}>{coachCue}</Text>
+              </View>
+            </View>
 
             {/* Routine Exercises or Active Exercise Sets */}
             {activeSession.routine?.exercises && activeSession.routine.exercises.length > 0 ? (
@@ -878,5 +967,147 @@ const styles = StyleSheet.create({
   noAltsText: {
     fontSize: 14,
     color: Colors.textMuted,
+  },
+  restTimerCard: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    padding: Spacing.base,
+    marginBottom: Spacing.md,
+  },
+  restTimerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  restTimerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  restTimerEmoji: {
+    fontSize: 16,
+  },
+  restTimerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.technicalBlue,
+  },
+  restTimerDigits: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.charcoalDark,
+  },
+  restProgressBarTrack: {
+    height: 6,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: Spacing.md,
+  },
+  restProgressBarFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 3,
+  },
+  restActionsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  restActionBtn: {
+    flex: 1,
+    backgroundColor: Colors.canvasBase,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingVertical: 8,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  restActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.technicalBlue,
+  },
+  restSkipBtn: {
+    backgroundColor: 'transparent',
+    borderColor: Colors.border,
+  },
+  restSkipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.slateBody,
+  },
+  coachCueCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.canvasBase,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+    ...Shadows.card,
+  },
+  avatarWrapper: {
+    width: 60,
+    height: 60,
+    borderRadius: BorderRadius.full,
+    padding: 3,
+    backgroundColor: Colors.coachOrange,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.coachOrangeSubtle,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.canvasBase,
+  },
+  avatarBadgeIcon: {
+    fontSize: 10,
+  },
+  speechCol: {
+    flex: 1,
+    gap: 2,
+  },
+  coachHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coachName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.coachOrange,
+    letterSpacing: 0.8,
+  },
+  greenPulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+  coachSpeech: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.charcoalDark,
+    lineHeight: 18,
   },
 });
