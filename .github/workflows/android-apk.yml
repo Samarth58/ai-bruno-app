@@ -32,17 +32,29 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
-
-      - name: Accept Android SDK Licenses
+        shell: bash
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
         run: |
-          # Allow SIGPIPE from 'yes' when sdkmanager closes stdin, but fail CI if sdkmanager itself errors
-          bash -c 'set +o pipefail; yes | sdkmanager --licenses'
+          set -euxo pipefail
+
+          mkdir -p "$ANDROID_HOME"
+
+          if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            mkdir -p "$ANDROID_HOME/cmdline-tools"
+            cd "$ANDROID_HOME/cmdline-tools"
+            curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o cmdline-tools.zip
+            unzip -q -o cmdline-tools.zip
+            rm -rf latest
+            mv cmdline-tools latest
+          fi
+
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
       - name: Install Frontend Dependencies
         working-directory: frontend
