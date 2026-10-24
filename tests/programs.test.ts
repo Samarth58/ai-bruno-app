@@ -441,8 +441,10 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
     it('generates a 3-day Full Body hypertrophy program for a commercial gym', () => {
       const plan = generateWorkoutProgramPlan({
         input: {
+          name: 'Lower Back Constraint Program',
           splitType: 'full_body',
           trainingDaysPerWeek: 3,
+          durationWeeks: 4,
           goal: 'hypertrophy',
           targetSessionDurationMinutes: 45,
         },
@@ -469,8 +471,10 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
     it('adapts rep ranges and rest periods for strength goals', () => {
       const plan = generateWorkoutProgramPlan({
         input: {
+          name: 'Strength Program',
           splitType: 'upper_lower',
           trainingDaysPerWeek: 4,
+          durationWeeks: 4,
           goal: 'strength',
           targetSessionDurationMinutes: 60,
         },
@@ -492,8 +496,10 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
     it('adapts rep ranges and rest periods for endurance goals', () => {
       const plan = generateWorkoutProgramPlan({
         input: {
+          name: 'Endurance Program',
           splitType: 'upper_lower',
           trainingDaysPerWeek: 4,
+          durationWeeks: 4,
           goal: 'endurance',
           targetSessionDurationMinutes: 30,
         },
@@ -512,8 +518,10 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
     it('strictly respects equipment grounding: never assigns barbell or machine to dumbbell-only gym', () => {
       const plan = generateWorkoutProgramPlan({
         input: {
+          name: 'Dumbbell-Only Program',
           splitType: 'upper_lower',
           trainingDaysPerWeek: 4,
+          durationWeeks: 4,
           goal: 'hypertrophy',
           targetSessionDurationMinutes: 45,
         },
@@ -546,8 +554,10 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
 
       const plan = generateWorkoutProgramPlan({
         input: {
+          name: 'Lower Back Constraint Program',
           splitType: 'full_body',
           trainingDaysPerWeek: 3,
+          durationWeeks: 4,
           goal: 'hypertrophy',
           targetSessionDurationMinutes: 45,
         },
@@ -570,8 +580,11 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
       expect(() => {
         generateWorkoutProgramPlan({
           input: {
+            name: 'Empty Exercise Program',
             splitType: 'full_body',
             trainingDaysPerWeek: 3,
+            durationWeeks: 4,
+            targetSessionDurationMinutes: 45,
             goal: 'hypertrophy',
           },
           exercises: [],
@@ -636,8 +649,10 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
 
       const plan = generateWorkoutProgramPlan({
         input: {
+          name: 'Baseline Strength Program',
           splitType: 'full_body',
           trainingDaysPerWeek: 3,
+          durationWeeks: 4,
           goal: 'hypertrophy', // 8-12 reps -> avg 10 reps -> divider = 1 + 10/30 = 1.3333
           targetSessionDurationMinutes: 45,
         },
@@ -673,8 +688,10 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
     it('keeps targetWeightKg as null when baseline data is absent without failing generation', () => {
       const plan = generateWorkoutProgramPlan({
         input: {
+          name: 'Baseline-Free Program',
           splitType: 'full_body',
           trainingDaysPerWeek: 3,
+          durationWeeks: 4,
           goal: 'hypertrophy',
           targetSessionDurationMinutes: 45,
         },
@@ -1271,4 +1288,3 @@ describe('Bruno AI Gym Buddy — Phase 3: Personalized Workout Program Generatio
     });
   });
 });
-
