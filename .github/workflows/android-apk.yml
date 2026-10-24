@@ -61,7 +61,13 @@ jobs:
 
       - name: Install Frontend Dependencies
         working-directory: frontend
-        run: npm ci --include=dev
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --include=dev
+
+      - name: Align Expo dependency versions
+        working-directory: frontend
+        run: npx expo install --fix
 
       - name: Frontend Quality Verification
         working-directory: frontend
@@ -69,10 +75,6 @@ jobs:
           npm run type-check
           npm run lint
           npm test
-
-      - name: Align Expo dependency versions
-        working-directory: frontend
-        run: npx expo install --fix
 
       - name: Expo Prebuild (Android Native Scaffolding)
         working-directory: frontend
