@@ -34,8 +34,8 @@ jobs:
       - name: Setup Android SDK
         shell: bash
         env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           set -euxo pipefail
 
@@ -71,8 +71,8 @@ jobs:
         working-directory: frontend
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || 'https://ds3xeksdqbnoqesxabywgrke.167.233.97.217.sslip.io' }}
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: npx expo prebuild --platform android --clean
 
       - name: Configure Android Gradle Wrapper & Properties
@@ -93,8 +93,8 @@ jobs:
         working-directory: frontend/android
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || 'https://ds3xeksdqbnoqesxabywgrke.167.233.97.217.sslip.io' }}
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           chmod +x ./gradlew
           ./gradlew clean assembleDebug --no-daemon --stacktrace
